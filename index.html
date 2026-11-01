@@ -1,0 +1,1413 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Diario pizza">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#f4f0e8">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<title>Diario Pizza</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: una colonna stretta da telefono; barra di navigazione in basso; form in bottom-sheet. */
+:root{
+  --bg:#f4f0e8;
+  --surface:#ffffff;
+  --ink:#221c17;
+  --muted:#6e655b;
+  --line:#e3ddd2;
+  --accent:#b23a2b;
+  --accent-ink:#ffffff;
+  --crust:#c0832f;
+  --basil:#3f6b45;
+  --danger:#a23a2a;
+  --font-display:"Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
+  --font-body:"IBM Plex Sans", -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --font-mono:"IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --radius:14px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#14110f; --surface:#1e1a17; --ink:#eee8e1; --muted:#a59b90; --line:#302a25;
+    --accent:#e87a68; --accent-ink:#1d0f0c; --crust:#e0ab62; --basil:#8fbf94; --danger:#e07a68;
+    color-scheme:dark;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;overflow-x:hidden;overscroll-behavior-x:none;max-width:100%}
+html{-webkit-text-size-adjust:100%}
+img,input,select,textarea,button{max-width:100%}
+body{
+  background:var(--bg); color:var(--ink); font-family:var(--font-body); font-size:16px; line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:640px;margin:0 auto;padding:20px 16px calc(110px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:18px;overflow-x:hidden}
+.wrap > *, .sheet > *, form > *{min-width:0}
+h1,h2,h3{font-family:var(--font-display);text-wrap:balance;margin:0;letter-spacing:-0.01em}
+h1{font-size:30px;font-weight:700;line-height:1.1}
+h2{font-size:20px;font-weight:700}
+h3{font-size:16px;font-weight:700}
+.num{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+
+.top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.top p{margin:4px 0 0;color:var(--muted);font-size:14px}
+
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:9px 16px;font-weight:500;font-size:15px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;text-decoration:none;touch-action:manipulation}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.danger{color:var(--danger);border-color:transparent;background:transparent;padding-left:0}
+.btn.ghost{background:transparent;border-color:transparent;padding-left:0}
+.btn.small{padding:6px 12px;font-size:14px}
+.btn:disabled{opacity:.5;cursor:default}
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+
+/* tipi di impasto */
+.types{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:4px}
+.types a,.types button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border-radius:10px;text-decoration:none;font-size:14px;font-weight:500;color:var(--muted);border:0;background:transparent;cursor:pointer;touch-action:manipulation}
+.types svg{width:26px;height:26px}
+.types [aria-current="true"]{background:var(--accent);color:var(--accent-ink)}
+.lead{margin:-6px 0 0;color:var(--muted);font-size:14px}
+
+/* risultati */
+.res{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px;display:flex;flex-direction:column;gap:12px}
+.res-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px 10px}
+@media (max-width:380px){.res-grid{grid-template-columns:repeat(2,1fr)}}
+.res-grid > div{display:flex;flex-direction:column;min-width:0}
+.rl{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.rv{font-size:22px;font-weight:500;line-height:1.2;font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.u{font-family:var(--font-body);font-size:.68em;color:var(--muted);margin-left:2px}
+.res-grid .yeast{grid-column:1/-1;background:color-mix(in srgb,var(--accent) 9%,var(--surface));border-radius:10px;padding:8px 10px;flex-direction:row;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:4px 12px}
+.res-grid .yeast .rv{color:var(--accent);font-size:26px}
+.yk{display:inline-flex;border:1px solid color-mix(in srgb,var(--accent) 35%,var(--line));border-radius:999px;padding:2px;background:var(--surface)}
+.yk button{border:0;background:transparent;border-radius:999px;padding:5px 14px;font-size:14px;font-weight:500;color:var(--muted);cursor:pointer;touch-action:manipulation;min-height:32px}
+.yk button[aria-checked="true"]{background:var(--accent);color:var(--accent-ink)}
+.ytop{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;flex-wrap:wrap}
+details.adv{background:var(--surface);border:1px solid var(--line);border-radius:12px}
+details.adv > summary{cursor:pointer;list-style:none;padding:12px;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+details.adv > summary::-webkit-details-marker{display:none}
+details.adv > summary .st{font-size:13px;color:var(--muted);text-align:right}
+details.adv > summary .st.on{color:var(--accent);font-weight:500}
+details.adv > summary b{font-weight:500}
+details.adv > summary b::before{content:"▸ ";display:inline-block;width:1em;color:var(--muted)}
+details.adv[open] > summary b::before{content:"▾ "}
+details.adv .in{display:flex;flex-direction:column;gap:10px;padding:0 10px 10px}
+details.adv .sl{background:var(--bg)}
+details.adv .sl .seg button{background:var(--surface)}
+details.adv .sl .seg button[aria-checked="true"]{background:var(--accent)}
+.res-meta{display:flex;flex-direction:column;gap:4px;font-size:14px;color:var(--muted);border-top:1px solid var(--line);padding-top:10px}
+.res-meta b{color:var(--ink);font-weight:500}
+.tip{background:var(--bg);border-radius:10px;padding:8px 10px;font-size:14px;margin:0}
+.mini{position:fixed;left:0;right:0;top:0;z-index:15;background:color-mix(in srgb,var(--surface) 94%,transparent);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:calc(8px + env(safe-area-inset-top)) 16px 8px;transform:translateY(-110%);transition:transform .18s ease-out}
+.mini.on{transform:none}
+.mini .in{max-width:640px;margin:0 auto;display:flex;justify-content:space-between;gap:8px;font-size:13px}
+.mini .in div{display:flex;flex-direction:column;min-width:0}
+.mini .in b{font-family:var(--font-mono);font-weight:500;font-size:15px}
+.mini .in .y b{color:var(--accent)}
+
+/* controlli */
+.group{display:flex;flex-direction:column;gap:10px}
+.group > h3{color:var(--muted);font-size:13px;text-transform:uppercase;letter-spacing:.06em;font-family:var(--font-body);font-weight:600;margin-top:4px}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.flabel,.field > label{font-size:13px;font-weight:500;color:var(--muted)}
+.sl{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;gap:6px}
+.sl-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.sl-head label{font-size:14px;color:var(--ink);font-weight:500}
+.sl-head output{font-size:19px;font-weight:600;white-space:nowrap;font-family:var(--font-body)!important;font-variant-numeric:tabular-nums}
+.sl-row{display:grid;grid-template-columns:40px 1fr 40px;gap:10px;align-items:center}
+.sl-row input[type=range]{width:100%;min-width:0;touch-action:pan-y;accent-color:var(--accent);height:32px;margin:0}
+.sl-row input[type=range]:disabled{opacity:.4}
+.step{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--bg);font-size:20px;line-height:1;cursor:pointer;touch-action:manipulation}
+.step:active{background:var(--line)}
+.hint{font-size:12px;color:var(--muted);margin:0}
+.hint:empty{display:none}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{flex:1 1 auto;min-height:40px;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:6px 12px;font-size:15px;cursor:pointer;touch-action:manipulation}
+.seg button[aria-checked="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:500}
+.sl .seg button{background:var(--bg)}
+.sl .seg button[aria-checked="true"]{background:var(--accent)}
+.prefill{display:flex;flex-wrap:wrap;gap:8px}
+.prefill:empty{display:none}
+
+/* liste */
+.list{display:flex;flex-direction:column;gap:10px}
+.card{display:grid;grid-template-columns:72px 1fr;gap:12px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:10px;cursor:pointer;text-align:left;width:100%}
+.card:hover{border-color:var(--muted)}
+.thumb{width:72px;height:72px;border-radius:10px;object-fit:cover;background:var(--bg);display:block}
+.thumb.ph{display:grid;place-items:center;color:var(--muted)}
+.card .t{display:flex;flex-direction:column;gap:2px;min-width:0}
+.card .row{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.card .name{font-weight:600;font-size:16px;overflow-wrap:anywhere}
+.card .sub{color:var(--muted);font-size:14px;overflow-wrap:anywhere}
+.card .meta{display:flex;flex-wrap:wrap;gap:4px;margin-top:2px}
+.card .note1{font-size:14px;font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pill{display:inline-block;font-size:12px;padding:2px 8px;border-radius:999px;background:var(--bg);border:1px solid var(--line);color:var(--muted)}
+.pill.warn{color:var(--crust);border-color:color-mix(in srgb,var(--crust) 45%,transparent)}
+.pill.tag{color:var(--basil);border-color:color-mix(in srgb,var(--basil) 40%,transparent)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:14px;cursor:pointer;touch-action:manipulation}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chips.scroll{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:0 16px}
+.chips.scroll::-webkit-scrollbar{display:none}
+.chips.scroll .chip{flex:0 0 auto}
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:var(--radius);padding:24px;text-align:center;color:var(--muted)}
+.empty p{margin:0 0 12px}
+.notice{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px}
+.notice p{margin:0}
+.stars{color:var(--crust);letter-spacing:1px;font-size:15px;white-space:nowrap}
+.stars .off{color:var(--line)}
+
+/* gusti */
+.ggrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.gcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;cursor:pointer;text-align:left;padding:0;display:flex;flex-direction:column}
+.gcard:hover{border-color:var(--muted)}
+.gcard .ph,.gcard img{width:100%;aspect-ratio:1/1;object-fit:cover;display:block;background:var(--bg)}
+.gcard .ph{display:grid;place-items:center;color:var(--muted)}
+.gcard .b{padding:8px 10px 10px;display:flex;flex-direction:column;gap:4px}
+.gcard .name{font-weight:600;overflow-wrap:anywhere}
+.gcard .meta{display:flex;flex-wrap:wrap;gap:4px}
+
+/* dettaglio */
+.hero-img{width:100%;max-height:340px;object-fit:cover;border-radius:12px;display:block;background:var(--surface)}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px 16px;margin:0}
+.facts div{display:flex;flex-direction:column}
+.facts dt{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.facts dd{margin:0;font-weight:500}
+.bars{display:flex;flex-direction:column;gap:6px}
+.bar{display:grid;grid-template-columns:1fr 110px 28px;gap:8px;align-items:center;font-size:14px}
+.bar .tr{height:8px;border-radius:4px;background:var(--line);overflow:hidden}
+.bar .tr i{display:block;height:100%;background:var(--crust)}
+.prose{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.box{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.box.tips{border-left:4px solid var(--basil)}
+.box ul{margin:0;padding-left:18px}
+
+/* sheet */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;z-index:30}
+.sheet{background:var(--bg);width:100%;max-width:640px;max-height:92%;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;touch-action:pan-y;border-radius:18px 18px 0 0;padding:18px 16px calc(24px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:16px;-webkit-overflow-scrolling:touch}
+@media (min-width:700px){.overlay{align-items:center}.sheet{border-radius:18px;max-height:88%}}
+.sheet-head{display:flex;justify-content:space-between;align-items:center;gap:8px;position:sticky;top:-18px;background:var(--bg);padding:6px 0;z-index:1}
+form{display:flex;flex-direction:column;gap:14px}
+input[type=text],input[type=datetime-local],textarea{
+  width:100%;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:16px;min-height:44px;
+}
+input[type=datetime-local]{-webkit-appearance:none;appearance:none;display:block;min-width:0;text-align:left}
+textarea{min-height:96px;resize:vertical;line-height:1.45}
+.addrow{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}
+.addrow input{min-height:38px;padding:6px 10px;font-size:15px}
+.rating{display:flex;gap:6px}
+.rating button{width:42px;height:42px;border-radius:10px;border:1px solid var(--line);background:var(--surface);font-size:20px;color:var(--line);cursor:pointer}
+.rating button.on{color:var(--crust);border-color:color-mix(in srgb,var(--crust) 50%,var(--line))}
+.photo-pick{border:1px dashed var(--line);border-radius:var(--radius);background:var(--surface);min-height:110px;display:grid;place-items:center;cursor:pointer;overflow:hidden;position:relative;color:var(--muted);text-align:center;padding:0}
+.photo-pick img{width:100%;max-height:240px;object-fit:cover;display:block}
+.photo-pick input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.form-foot{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.summary{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:12px;padding:10px 12px;font-size:14px;display:flex;flex-direction:column;gap:2px}
+.summary b{font-weight:600}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;z-index:40;max-width:90%}
+.foot{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;padding-top:16px;border-top:1px solid var(--line)}
+.foot .who{width:100%;text-align:center;font-size:13px;color:var(--muted)}
+.login{display:flex;flex-direction:column;gap:14px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px}
+.login .err{color:var(--danger);margin:0;font-size:14px}
+input[type=password]{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:16px;min-height:44px}
+.nudge{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 12px;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--crust);border-radius:12px;padding:10px 12px;font-size:14px}
+details.how{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:14px}
+details.how summary{cursor:pointer;font-weight:500}
+details.how p{margin:8px 0 0;color:var(--muted)}
+
+/* barra in basso */
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:20;background:color-mix(in srgb,var(--surface) 96%,transparent);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-top:1px solid var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom))}
+.tabbar .in{max-width:640px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.tabbar a{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;font-size:12px;font-weight:500;color:var(--muted);text-decoration:none;border-radius:10px;touch-action:manipulation}
+.tabbar a svg{width:24px;height:24px}
+.tabbar a[aria-current="page"]{color:var(--accent)}
+@media (prefers-reduced-motion:no-preference){
+  .sheet{animation:up .18s ease-out}
+  @keyframes up{from{transform:translateY(24px);opacity:.6}to{transform:none;opacity:1}}
+}
+@media (prefers-reduced-motion:reduce){.mini{transition:none}}
+</style>
+</head>
+<body>
+<div class="mini" id="mini" aria-hidden="true"><div class="in" id="mini-in"></div></div>
+<main class="wrap" id="app"></main>
+<nav class="tabbar" id="nav" aria-label="Sezioni"></nav>
+
+<script src="config.js"></script>
+<script src="vendor/supabase-2.117.3.js"></script>
+<script>
+(() => {
+"use strict";
+
+/* ================= icone ================= */
+const IC = {
+  tonda:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="6.3"/><circle cx="10" cy="10" r="1"/><circle cx="14.5" cy="11" r="1"/><circle cx="11.5" cy="14.5" r="1"/></svg>',
+  romana:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="8"/><path d="M5 19 19 5" stroke-dasharray="2 2"/></svg>',
+  teglia:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="1.5"/><rect x="5" y="8" width="14" height="8" rx="1"/><circle cx="9" cy="11" r=".9"/><circle cx="14" cy="13" r=".9"/></svg>',
+  pane:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3 15c0-4.5 4-8 9-8s9 3.5 9 8c0 1.7-1.3 3-3 3H6c-1.7 0-3-1.3-3-3Z"/><path d="M8 9.5l1.5 3M12 8.8v3.4M16 9.5l-1.5 3"/></svg>',
+  registro:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>',
+  gusti:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M12 3 3.5 19.5c5.4 2 11.6 2 17 0Z"/><circle cx="11" cy="12" r="1.2"/><circle cx="14" cy="16" r="1.2"/><circle cx="9" cy="17" r="1.2"/></svg>',
+  predefiniti:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>',
+};
+const pizzaSvg = '<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="6.3"/><circle cx="10" cy="10" r="1"/><circle cx="14.5" cy="11" r="1"/><circle cx="11.5" cy="14.5" r="1"/></svg>';
+
+/* ================= campi e tipi di impasto ================= */
+const BASE = {
+  count:  {label:"Numero", min:1, max:24, step:1, unit:""},
+  weight: {label:"Peso", min:150, max:400, step:5, unit:"g"},
+  shape:  {label:"Forma della teglia", type:"seg", options:[["rett","Rettangolare"],["tonda","Tonda"]]},
+  length: {label:"Lunghezza", min:15, max:80, step:1, unit:"cm"},
+  width:  {label:"Larghezza", min:10, max:60, step:1, unit:"cm"},
+  diam:   {label:"Diametro", min:16, max:50, step:1, unit:"cm"},
+  load:   {label:"Carico (spessore)", min:0.35, max:0.9, step:0.01, unit:"g/cm²", dec:2},
+  hydro:  {label:"Idratazione", min:50, max:100, step:1, unit:"%"},
+  salt:   {label:"Sale per litro d'acqua", min:0, max:70, step:1, unit:"g/L"},
+  fat:    {label:"Olio, strutto o burro per litro d'acqua", min:0, max:150, step:1, unit:"g/L"},
+  pdr:    {label:"Pasta di riporto", min:0, max:50, step:0.5, unit:"%", dec:1},
+  pdrType:{label:"Tipo di pasta di riporto", type:"seg", options:[[1,"Stanca"],[2,"Normale"],[3,"Vivace"]]},
+  hours:  {label:"Ore di lievitazione totali", min:3, max:96, step:1, unit:"h"},
+  fridge: {label:"…di cui in frigorifero", min:0, max:95, step:1, unit:"h"},
+  temp:   {label:"Temperatura ambiente", min:15, max:35, step:0.5, unit:"°C", dec:1},
+  comp:   {label:"Compensazione teglia", type:"bool"},
+  yeast:  {label:"Lievito di birra", type:"seg", options:[["fresco","Fresco"],["secco","Secco"]]},
+};
+const GROUPS = [
+  ["Quantità", ["count","weight","shape","length","width","diam","load"]],
+  ["Impasto", ["hydro","salt","fat","pdr","pdrType"]],
+  ["Lievitazione", ["yeast","hours","fridge","temp","comp"]],
+];
+const TYPES = {
+  tonda: {label:"Pizza tonda", tab:"Tonda", sub:"Napoletana o contemporanea, a panielli.",
+    fields:["count","weight","hydro","salt","fat","pdr","pdrType","hours","fridge","temp"],
+    labels:{count:"Numero di panielli", weight:"Peso di ogni paniello"},
+    ranges:{count:[1,24,1], weight:[150,400,5]},
+    hydroTip:"Di solito 58–65% per la classica, 65–75% per la contemporanea.",
+    piece:["paniello","panielli"], fatName:"Grassi",
+    defaults:{count:4, weight:260, hydro:65, salt:50, fat:0, pdr:0, pdrType:2, hours:24, fridge:0, temp:20, comp:false},
+    oven:{temp:450, time:90}},
+  romana: {label:"Pizza tonda romana", tab:"Romana", sub:"Sottile e scrocchiarella, stesa col mattarello.",
+    fields:["count","weight","hydro","salt","fat","pdr","pdrType","hours","fridge","temp"],
+    labels:{count:"Numero di panielli", weight:"Peso di ogni paniello", fat:"Olio per litro d'acqua"},
+    ranges:{count:[1,24,1], weight:[120,300,5]},
+    hydroTip:"Di solito 55–62%, con olio nell'impasto.",
+    piece:["paniello","panielli"], fatName:"Olio",
+    defaults:{count:4, weight:180, hydro:60, salt:50, fat:50, pdr:0, pdrType:2, hours:24, fridge:0, temp:20, comp:false},
+    oven:{temp:330, time:240}},
+  teglia: {label:"Pizza in teglia", tab:"Teglia", sub:"In teglia o alla pala: l'impasto si calcola dalla superficie.",
+    fields:["count","shape","length","width","diam","load","hydro","salt","fat","pdr","pdrType","hours","fridge","temp","comp"],
+    labels:{count:"Numero di teglie", fat:"Olio per litro d'acqua"},
+    ranges:{count:[1,6,1]},
+    hydroTip:"Di solito 75–85%.",
+    piece:["teglia","teglie"], fatName:"Olio",
+    defaults:{count:1, shape:"rett", length:40, width:30, diam:30, load:0.6, hydro:80, salt:50, fat:35, pdr:0, pdrType:2, hours:24, fridge:0, temp:20, comp:true},
+    oven:{temp:250, time:900}},
+  pane: {label:"Pane", tab:"Pane", sub:"Pagnotte e filoni, anche con lievito madre come pasta di riporto.",
+    fields:["count","weight","hydro","salt","fat","pdr","pdrType","hours","fridge","temp"],
+    labels:{count:"Numero di pagnotte", weight:"Peso di ogni pagnotta", pdr:"Lievito madre / pasta di riporto", pdrType:"Stato del lievito madre / pasta di riporto", fat:"Grassi per litro d'acqua"},
+    ranges:{count:[1,8,1], weight:[200,2000,10]},
+    hydroTip:"Di solito 65–75%; oltre 75% per pani molto alveolati.",
+    piece:["pagnotta","pagnotte"], fatName:"Grassi",
+    defaults:{count:1, weight:1000, hydro:70, salt:28, fat:0, pdr:0, pdrType:3, hours:12, fridge:0, temp:22, comp:false},
+    oven:{temp:230, time:2700}},
+};
+const TYPE_KEYS = Object.keys(TYPES);
+const ADVANCED = ["fat","pdr","pdrType"];
+for (const k of TYPE_KEYS){ TYPES[k].fields.push("yeast"); TYPES[k].defaults.yeast = "fresco"; }
+let advOpen = false;
+const isDry = v => v && v.yeast === "secco";
+const yeastOf = (v, freshG) => isDry(v) ? freshG / 3 : freshG;          // lievito secco ≈ 1/3 del fresco
+const yeastName = v => isDry(v) ? "Lievito di birra secco" : "Lievito di birra fresco";
+function advStatus(t, v){
+  const bits = [];
+  if (v.fat) bits.push((TYPES[t].fatName === "Olio" ? "olio " : "grassi ") + fmtNum(v.fat) + " g/L");
+  if (v.pdr) bits.push((t === "pane" ? "lievito madre " : "pasta di riporto ") + fmtNum(v.pdr, 1) + "%");
+  return bits.length ? bits.join(" · ") : "non usati";
+}
+
+const DIAG = {
+  rise:  {label:"Lievitazione", opts:[["low","Scarsa"],["ok","Giusta"],["high","Eccessiva"]]},
+  feel:  {label:"Impasto al tatto", opts:[["dry","Asciutto"],["ok","Giusto"],["sticky","Appiccicoso"]]},
+  shape: {label:"Stesura / formatura", opts:[["tight","Si ritira"],["ok","Giusta"],["tear","Si strappa"]]},
+};
+const TIPS = {
+  "rise:low":"Lievitazione scarsa: controlla la temperatura reale della stanza. Se era più fresca di quella inserita, la prossima volta inserisci il valore vero e il calcolatore aumenterà il lievito.",
+  "rise:high":"Lievitazione eccessiva: probabilmente l'ambiente era più caldo del valore inserito. Inserisci una temperatura più alta e il calcolatore ridurrà il lievito.",
+  "feel:dry":"Impasto asciutto: prova ad alzare l'idratazione di 2–3 punti.",
+  "feel:sticky":"Impasto appiccicoso: abbassa l'idratazione di 2–3 punti oppure usa una farina più forte (W più alto).",
+  "shape:tight":"Si ritira: lascia riposare di più i panielli prima di stendere, o scegli una farina meno tenace.",
+  "shape:tear":"Si strappa: la farina è debole per questa lievitazione. Usa un W più alto o accorcia le ore.",
+};
+const SCORES = [["taste","Gusto"],["light","Leggerezza e alveolatura"],["crisp","Croccantezza"],["digest","Digeribilità"]];
+const SCORE_PANE = {light:"Alveolatura della mollica", crisp:"Crosta"};
+const OVENS = ["Forno di casa","Fornetto pizza","Forno a legna","Forno a gas","Altro"];
+const BASES = ["Rossa","Bianca","Verde","Altro"];
+const DEFAULT_TAGS = ["Vegetariana","Vegana","Senza lattosio","Piccante","Classica","Gourmet","Stagionale","Con pesce","Con carne"];
+
+/* ================= formule (dal Calcolapizza 2.1) ================= */
+function totalDough(t, v){
+  if (t === "teglia"){
+    const area = v.shape === "tonda" ? Math.PI * Math.pow(v.diam/2, 2) : v.length * v.width;
+    return area * v.load * v.count;
+  }
+  return v.count * v.weight;
+}
+function compute(t, v){
+  const total = totalDough(t, v);
+  const H = v.hydro, l = v.salt, d = v.fat, i = v.hours;
+  const s = Math.max(0, Math.min(v.fridge, i - 1));
+  const n = v.temp * (1 - 0.25 * (v.comp ? 1 : 0));            // temperatura usata nel calcolo
+  const g = ({1:1/300, 2:0.005, 3:0.01})[v.pdrType] ?? 0.005;   // g di lievito equivalenti per g di pasta di riporto
+  const c = i - 0.9 * s;                                        // ore equivalenti a temperatura ambiente
+  const h = 2250 * (1 + l/200) * (1 + d/300) / ((4.2*H - 80 - 0.0305*H*H) * Math.pow(n, 2.5) * Math.pow(c, 1.2));
+  const C = H * (l + d) + 1000 * (H + 100);
+  const maxPdr = 1e5 * h * 100 / (1e5 * h + C * g);
+  const pdrPct = Math.min(v.pdr || 0, maxPdr);
+  const pdr = total * pdrPct / 100;
+  const rest = total - pdr;
+  const flour = 1e5 * rest / C;
+  const water = 1000 * H * rest / C;
+  const salt = l * H * rest / C;
+  const fat = d * H * rest / C;
+  const yeast = Math.max(0, flour * h - g * pdr);
+  const W = 10 * Math.round((81.4206918743428 + 78.3939060802556 * Math.log(i)) / 10);
+  return {total, flour, water, salt, fat, pdr, yeast, maxPdr, W, effHours:c, calcTemp:n, piece: t === "teglia" ? total / v.count : v.weight};
+}
+
+/* ================= stato ================= */
+let db = null, assets = null;
+const CFG = window.DIARIO_CONFIG || {};
+const S = {
+  defaults:{}, bakes:[], toppings:[], loaded:{d:false,b:false,t:false}, error:null, slow:false, noDb:false, needLogin:false, offline:false,
+  bakeFilter:"all", tagFilter:new Set(), typeFilter:null, defType:"tonda",
+};
+const calc = {}, touched = {};
+let calcType = "tonda";
+const app = document.getElementById("app");
+const nav = document.getElementById("nav");
+const mini = document.getElementById("mini");
+
+/* ================= utilità ================= */
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uid = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+const fmtNum = (n, dec = 2) => n == null || !isFinite(n) ? "" : Number(n).toLocaleString("it-IT", {maximumFractionDigits:dec});
+const fmtFixed = (n, dec) => Number(n).toLocaleString("it-IT", {minimumFractionDigits:dec, maximumFractionDigits:dec});
+const fmtG = g => Math.round(g).toLocaleString("it-IT") + " g";
+const fmtYeast = g => fmtFixed(g, 2) + " g";
+const gHtml = g => Math.round(g).toLocaleString("it-IT") + '<span class="u">g</span>';
+const yHtml = g => (g > 0 ? fmtFixed(g, 2) : "0") + '<span class="u">g</span>';
+const durFmt = n => { if (n == null) return ""; if (n < 60) return n + " s"; const m = Math.floor(n/60), s = n % 60; return s ? m + ":" + String(s).padStart(2,"0") + " min" : m + " min"; };
+const snap = (v, min, max, step) => { const n = Math.round((Math.min(max, Math.max(min, v)) - min) / step) * step + min; return Math.round(n * 10000) / 10000; };
+const fmtDate = iso => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleDateString("it-IT", {day:"numeric", month:"short", year:"numeric"}); };
+const fmtWhen = iso => { const d = new Date(iso); if (isNaN(d)) return ""; return d.toLocaleDateString("it-IT",{weekday:"short", day:"numeric", month:"short"}) + " · " + d.toLocaleTimeString("it-IT",{hour:"2-digit", minute:"2-digit"}); };
+const localDT = (d = new Date()) => { const p = x => String(x).padStart(2,"0"); return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"T"+p(d.getHours())+":"+p(d.getMinutes()); };
+const photoUrl = path => String(CFG.supabaseUrl || "").replace(/\/$/, "") + "/storage/v1/object/public/photos/" + String(path).split("/").map(encodeURIComponent).join("/");
+const stars = r => { r = r || 0; if (!r) return ""; let s = ""; for (let i=1;i<=5;i++) s += i <= r ? "★" : '<span class="off">★</span>'; return '<span class="stars" aria-label="Voto '+r+' su 5">'+s+"</span>"; };
+function toast(msg){
+  document.querySelectorAll(".toast").forEach(x => x.remove());
+  const t = document.createElement("div"); t.className = "toast"; t.setAttribute("role","status"); t.textContent = msg;
+  document.body.appendChild(t); setTimeout(() => t.remove(), 3200);
+}
+function errMsg(e){
+  const c = e && e.code;
+  if (c === "quota_exceeded" || c === "quota_or_state") return "Spazio dell'archivio esaurito: elimina qualcosa e riprova.";
+  if (c === "too_large") return "La foto è troppo grande.";
+  if (c === "invalid_argument" || c === "not_granted") return "Non hai i permessi per modificare questo archivio.";
+  return "Salvataggio non riuscito. Controlla la connessione e riprova.";
+}
+async function retryOnce(fn){
+  try { return await fn(); }
+  catch(e){ if (e && (e.code === "unavailable" || e.code === "store_unavailable")) { await new Promise(r => setTimeout(r, 600 + Math.random()*600)); return fn(); } throw e; }
+}
+function compress(file, max = 1400, q = 0.82){
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const s = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+      const w = Math.round(img.naturalWidth * s), h = Math.round(img.naturalHeight * s);
+      const cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+      cv.getContext("2d").drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      cv.toBlob(b => b ? resolve(b) : reject(new Error("toBlob")), "image/jpeg", q);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("img")); };
+    img.src = url;
+  });
+}
+async function uploadPhoto(file){
+  let blob; try { blob = await compress(file); } catch { blob = file; }
+  const type = blob.type && /^image\/(jpeg|png|webp|gif)$/.test(blob.type) ? blob.type : "image/jpeg";
+  const up = await retryOnce(() => assets.upload(blob, {type}));
+  return up.id;
+}
+
+/* ================= valori del calcolatore ================= */
+const LS_KEY = "diario-pizza-calc";
+function defaultsFor(t){ return {...TYPES[t].defaults, ...((S.defaults[t] && S.defaults[t].vals) || {})}; }
+function getCalc(t){ if (!calc[t]) calc[t] = defaultsFor(t); return calc[t]; }
+function loadLocal(){
+  try {
+    const o = JSON.parse(localStorage.getItem(LS_KEY) || "null");
+    if (!o) return;
+    if (TYPES[o.type]) calcType = o.type;
+    if (Date.now() - o.ts > 12 * 3600e3) return;   // dopo 12 ore si riparte dai predefiniti
+    for (const t in o.v) if (TYPES[t]) { calc[t] = {...TYPES[t].defaults, ...o.v[t]}; touched[t] = true; }
+  } catch {}
+}
+function saveLocal(){
+  try { localStorage.setItem(LS_KEY, JSON.stringify({ts:Date.now(), type:calcType, v:Object.fromEntries(Object.keys(touched).map(t => [t, calc[t]]))})); } catch {}
+}
+
+function fdef(t, k, v, r){
+  const T = TYPES[t], d = {...BASE[k]};
+  const rg = T.ranges && T.ranges[k]; if (rg){ d.min = rg[0]; d.max = rg[1]; d.step = rg[2]; }
+  if (T.labels && T.labels[k]) d.label = T.labels[k];
+  if (k === "fridge") d.max = Math.max(0, v.hours - 1);
+  if (k === "pdr"){ const m = (r || compute(t, v)).maxPdr; d.max = Math.max(0, Math.min(50, Math.floor(m / 0.5) * 0.5)); }
+  return d;
+}
+function fmtVal(d, val){
+  if (d.dec === 2) return fmtFixed(val, 2) + " " + d.unit;
+  return fmtNum(val, d.dec || 0) + (d.unit === "%" ? "%" : d.unit ? " " + d.unit : "");
+}
+function visible(t, v){
+  return TYPES[t].fields.filter(k => {
+    if (k === "length" || k === "width") return v.shape !== "tonda";
+    if (k === "diam") return v.shape === "tonda";
+    return true;
+  });
+}
+function hintFor(t, k, v, r){
+  const T = TYPES[t];
+  switch(k){
+    case "count": case "weight":
+      if (t === "teglia") return "";
+      return k === "weight" ? "Impasto totale " + fmtG(r.total) : "";
+    case "load": return "≈ " + fmtG(r.piece) + " per teglia · 0,5 sottile, 0,7 alta";
+    case "length": case "width": return "";
+    case "diam": return "";
+    case "hydro": return T.hydroTip;
+    case "salt": return "≈ " + fmtNum(v.salt * v.hydro / 1000, 1) + "% sulla farina";
+    case "fat": return v.fat ? "≈ " + fmtNum(v.fat * v.hydro / 1000, 1) + "% sulla farina" : "Nessun grasso nell'impasto";
+    case "pdr":
+      if (r.maxPdr < 0.5) return "Con questi parametri non c'è spazio per la pasta di riporto.";
+      return "Massimo " + fmtNum(r.maxPdr, 1) + "%: oltre servirebbe meno di zero lievito di birra." + (v.pdr ? " Ora: " + fmtG(r.pdr) + "." : "");
+    case "hours": return "W della farina consigliato ≈ " + r.W;
+    case "fridge": return v.fridge ? "In frigo le ore valgono circa 1/10: equivale a " + fmtNum(r.effHours, 1) + " h a temperatura ambiente." : "Tutta la lievitazione a temperatura ambiente.";
+    case "temp": return v.comp ? "Con la compensazione il calcolo usa " + fmtNum(r.calcTemp, 1) + " °C." : "";
+    default: return "";
+  }
+}
+function controlHtml(prefix, t, k, v, r){
+  const d = fdef(t, k, v, r), id = prefix + "-" + k, val = v[k];
+  if (d.type === "seg"){
+    return '<div class="field sl" data-k="'+k+'" data-seg="1"><span class="sl-head"><label>'+esc(d.label)+'</label></span><div class="seg" data-k="'+k+'" role="radiogroup" aria-label="'+esc(d.label)+'">' +
+      d.options.map(o => '<button type="button" role="radio" data-v="'+esc(o[0])+'" aria-checked="'+(String(val)===String(o[0]))+'">'+esc(o[1])+"</button>").join("") + "</div></div>";
+  }
+  if (d.type === "bool"){
+    return '<div class="field sl" data-k="'+k+'" data-seg="1"><span class="sl-head"><label>'+esc(d.label)+'</label></span><div class="seg" data-k="'+k+'" role="radiogroup" aria-label="'+esc(d.label)+'">' +
+      '<button type="button" role="radio" data-v="1" aria-checked="'+(val===true)+'">Sì</button><button type="button" role="radio" data-v="0" aria-checked="'+(val!==true)+'">No</button></div>' +
+      '<p class="hint">Come nel Calcolapizza originale: il calcolo usa il 75% della temperatura, quindi più lievito. Consigliata per la teglia.</p></div>';
+  }
+  return '<div class="field sl" data-k="'+k+'">' +
+    '<div class="sl-head"><label for="'+id+'">'+esc(d.label)+'</label><output class="num" for="'+id+'">'+fmtVal(d, val)+"</output></div>" +
+    '<div class="sl-row"><button type="button" class="step" data-d="-1" aria-label="Diminuisci '+esc(d.label)+'">−</button>' +
+    '<input type="range" id="'+id+'" min="'+d.min+'" max="'+d.max+'" step="'+d.step+'" value="'+val+'"'+(d.max<=d.min?" disabled":"")+'>' +
+    '<button type="button" class="step" data-d="1" aria-label="Aumenta '+esc(d.label)+'">+</button></div>' +
+    '<p class="hint">'+esc(hintFor(t, k, v, r))+'</p></div>';
+}
+function panelHtml(prefix, t, v, hide){
+  const r = compute(t, v), vis = visible(t, v).filter(k => !(hide || []).includes(k));
+  return GROUPS.map(([g, ks]) => {
+    const fs = ks.filter(k => vis.includes(k));
+    if (!fs.length) return "";
+    const main = fs.filter(k => !ADVANCED.includes(k)), adv = fs.filter(k => ADVANCED.includes(k));
+    let h = '<section class="group"><h3>'+g+"</h3>" + main.map(k => controlHtml(prefix, t, k, v, r)).join("");
+    if (adv.length){
+      const st = advStatus(t, v);
+      h += '<details class="adv"'+(advOpen ? " open" : "")+'><summary><b>'+(t === "pane" ? "Grassi e lievito madre" : "Grassi e pasta di riporto")+'</b><span class="st'+(st !== "non usati" ? " on" : "")+'">'+esc(st)+"</span></summary>" +
+        '<div class="in">' + adv.map(k => controlHtml(prefix, t, k, v, r)).join("") + "</div></details>";
+    }
+    return h + "</section>";
+  }).join("");
+}
+function mountPanel(root, prefix, t, v, onChange, hide){
+  function clamp(){
+    v.fridge = Math.min(v.fridge, Math.max(0, v.hours - 1));
+    const m = fdef(t, "pdr", v).max;
+    if (v.pdr > m) v.pdr = m;
+  }
+  function refresh(){
+    clamp();
+    const r = compute(t, v);
+    root.querySelectorAll(".sl[data-k]:not([data-seg])").forEach(el => {
+      const k = el.dataset.k, d = fdef(t, k, v, r), inp = el.querySelector("input[type=range]");
+      if (Number(inp.max) !== d.max) inp.max = d.max;
+      if (Number(inp.value) !== v[k]) inp.value = v[k];
+      inp.disabled = d.max <= d.min;
+      el.querySelector("output").textContent = fmtVal(d, v[k]);
+      const h = el.querySelector(".hint"); if (h) h.textContent = hintFor(t, k, v, r);
+    });
+    const st = root.querySelector("details.adv .st");
+    if (st){ const tx = advStatus(t, v); st.textContent = tx; st.classList.toggle("on", tx !== "non usati"); }
+    if (onChange) onChange(r);
+  }
+  function draw(){ clamp(); root.innerHTML = panelHtml(prefix, t, v, hide); refresh(); }
+  root.addEventListener("toggle", e => { if (e.target.matches && e.target.matches("details.adv")) advOpen = e.target.open; }, true);
+  root.addEventListener("input", e => {
+    const inp = e.target; if (inp.type !== "range") return;
+    const k = inp.closest("[data-k]").dataset.k;
+    v[k] = Number(inp.value); refresh();
+  });
+  root.addEventListener("click", e => {
+    const st = e.target.closest(".step");
+    if (st){
+      const el = st.closest("[data-k]"), k = el.dataset.k, inp = el.querySelector("input[type=range]");
+      if (inp.disabled) return;
+      v[k] = snap(v[k] + Number(st.dataset.d) * Number(inp.step), Number(inp.min), Number(inp.max), Number(inp.step));
+      refresh(); return;
+    }
+    const b = e.target.closest(".seg [data-v]");
+    if (b){
+      const seg = b.closest(".seg"), k = seg.dataset.k, d = BASE[k];
+      v[k] = d.type === "bool" ? b.dataset.v === "1" : d.options.find(o => String(o[0]) === b.dataset.v)[0];
+      if (k === "shape"){ draw(); return; }
+      seg.querySelectorAll("[data-v]").forEach(x => x.setAttribute("aria-checked", String(x === b)));
+      refresh();
+    }
+  });
+  draw();
+  return {draw, refresh};
+}
+
+/* ================= routing ================= */
+const VIEWS = [...TYPE_KEYS, "registro", "gusti", "predefiniti"];
+function currentView(){ const h = location.hash.slice(1); return VIEWS.includes(h) ? h : calcType; }
+window.addEventListener("hashchange", () => { render(); window.scrollTo(0, 0); });
+
+function renderNav(vw){
+  const items = [[calcType, "Impasto", IC.tonda, !!TYPES[vw]], ["registro", "Registro", IC.registro, vw === "registro"], ["gusti", "Gusti", IC.gusti, vw === "gusti"], ["predefiniti", "Predefiniti", IC.predefiniti, vw === "predefiniti"]];
+  nav.innerHTML = '<div class="in">' + items.map(([h, l, ic, on]) => '<a href="#'+h+'"'+(on?' aria-current="page"':"")+">"+ic+"<span>"+l+"</span></a>").join("") + "</div>";
+}
+function render(){
+  const vw = currentView();
+  renderNav(vw);
+  if (TYPES[vw]){ calcType = vw; saveLocal(); renderCalc(); return; }
+  mini.classList.remove("on");
+  if (vw === "registro") renderLog();
+  else if (vw === "gusti") renderToppings();
+  else renderDefaults();
+}
+function dataReady(keys){ return keys.every(k => S.loaded[k]); }
+function dataNotice(title, keys){
+  if (S.noDb) return '<header class="top"><div><h1>'+title+'</h1></div></header><div class="notice"><p>Configurazione mancante: inserisci l\'indirizzo e la chiave di Supabase nel file config.js. Il calcolatore funziona comunque.</p></div>';
+  if (S.needLogin) return '<header class="top"><div><h1>'+title+'</h1></div></header>' + loginHtml();
+  if (S.error) return '<header class="top"><div><h1>'+title+'</h1></div></header><div class="notice"><p>'+esc(S.error)+"</p></div>";
+  if (!db || !dataReady(keys)) return '<header class="top"><div><h1>'+title+'</h1><p>'+(S.slow ? "L'archivio non risponde ancora. Controlla la connessione: i dati compariranno appena raggiungibili." : "Caricamento dell'archivio…")+"</p></div></header>";
+  return null;
+}
+
+/* ================= vista calcolatore ================= */
+let calcObserver = null;
+function qtyText(t, p){
+  if (t === "teglia") return p.count + " × " + (p.shape === "tonda" ? "Ø " + p.diam : p.length + "×" + p.width) + " cm";
+  return p.count + " × " + fmtNum(p.weight) + " g";
+}
+function resultsHtml(t, v, r){
+  const T = TYPES[t];
+  const items = [["Farina", r.flour], ["Acqua", r.water], ["Sale", r.salt]];
+  if (r.fat >= 0.5) items.push([T.fatName, r.fat]);
+  if (r.pdr >= 0.5) items.push([t === "pane" ? "Lievito madre" : "Pasta di riporto", r.pdr]);
+  let html = '<div class="res-grid">' + items.map(([l, g]) => '<div><span class="rl">'+l+'</span><span class="rv">'+gHtml(g)+"</span></div>").join("");
+  const yg = yeastOf(v, r.yeast);
+  html += '<div class="yeast"><div class="ytop"><span class="rl">'+yeastName(v)+'</span><span class="yk" role="radiogroup" aria-label="Tipo di lievito">' +
+    BASE.yeast.options.map(o => '<button type="button" role="radio" data-yk="'+o[0]+'" aria-checked="'+((v.yeast || "fresco") === o[0])+'">'+o[1]+"</button>").join("") +
+    '</span></div><span class="rv">'+yHtml(yg)+"</span></div></div>";
+  const meta = [];
+  if (t === "teglia") meta.push("Impasto <b class=\"num\">"+fmtG(r.piece)+"</b> per teglia" + (v.count > 1 ? " · totale <b class=\"num\">"+fmtG(r.total)+"</b>" : ""));
+  else meta.push("Impasto totale <b class=\"num\">"+fmtG(r.total)+"</b> · "+v.count+" "+T.piece[v.count === 1 ? 0 : 1]+" da "+fmtNum(v.weight)+" g");
+  if (r.yeast > 0) meta.push(yeastName(v) + ": " + fmtNum(yg / r.flour * 100, 3) + "% sulla farina" + (isDry(v) ? " (calcolato come 1/3 del fresco)" : ""));
+  else if (r.pdr > 0) meta.push("La pasta di riporto basta da sola: niente lievito di birra.");
+  meta.push("W della farina consigliato ≈ <b class=\"num\">"+r.W+"</b>");
+  const end = new Date(Date.now() + v.hours * 3600e3);
+  meta.push("Impastando adesso, pronto verso le <b>"+end.toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"})+"</b> di "+end.toLocaleDateString("it-IT",{weekday:"long", day:"numeric", month:"short"}));
+  html += '<div class="res-meta">' + meta.map(m => "<span>"+m+"</span>").join("") + "</div>";
+  if (yg > 0 && yg < 1 && r.water > yg * 100){
+    html += '<p class="tip">Quantità difficile da pesare? Sciogli 1 g di lievito '+(isDry(v) ? "secco" : "fresco")+' in 100 g d\'acqua e versane <b class="num">'+fmtNum(yg * 100, 0)+' g</b> nell\'impasto, al posto di altrettanta acqua.</p>';
+  }
+  return html;
+}
+function miniHtml(t, r, v){
+  return '<div><span class="muted">Farina</span><b>'+gHtml(r.flour)+'</b></div><div><span class="muted">Acqua</span><b>'+gHtml(r.water)+'</b></div><div><span class="muted">Sale</span><b>'+gHtml(r.salt)+'</b></div><div class="y"><span class="muted">Lievito '+(isDry(v) ? "secco" : "fresco")+'</span><b>'+yHtml(yeastOf(v, r.yeast))+"</b></div>";
+}
+function prefillHtml(t){
+  if (!db || !S.loaded.b) return "";
+  const same = S.bakes.filter(b => b.type === t);
+  if (!same.length) return "";
+  const last = same[0];
+  const best = same.filter(b => b.rating).sort((a, b) => b.rating - a.rating || (b.at || "").localeCompare(a.at || ""))[0];
+  let h = '<button type="button" class="btn small" data-load="'+esc(last.id)+'">Riprendi l\'ultimo · '+fmtDate(last.at)+"</button>";
+  if (best && best.id !== last.id) h += '<button type="button" class="btn small" data-load="'+esc(best.id)+'">Riprendi il migliore · '+"★".repeat(best.rating)+"</button>";
+  return h;
+}
+function renderCalc(){
+  const t = calcType, T = TYPES[t], v = getCalc(t);
+  app.innerHTML =
+    '<header class="top"><div><h1>Impasto</h1><p>'+esc(T.label)+'</p></div></header>' +
+    '<nav class="types" aria-label="Tipo di impasto">' + TYPE_KEYS.map(k => '<a href="#'+k+'"'+(k===t?' aria-current="true"':"")+">"+IC[k]+"<span>"+TYPES[k].tab+"</span></a>").join("") + "</nav>" +
+    '<p class="lead">'+esc(T.sub)+"</p>" +
+    '<section class="res" id="res" aria-live="polite"></section>' +
+    '<div class="prefill" id="prefill">'+prefillHtml(t)+"</div>" +
+    '<div id="panel" class="group"></div>' +
+    '<div class="actions"><button class="btn primary" data-act="save-bake">Salva nel registro</button><button class="btn" data-act="as-default">Usa come predefiniti</button><button class="btn" data-act="reset">Ripristina predefiniti</button></div>' +
+    '<details class="how"><summary>Come funziona il calcolo</summary><p>Le formule sono quelle del Calcolapizza 2.1 della Confraternita della Pizza: il lievito dipende da idratazione, sale, grassi, temperatura e ore (in frigo valgono circa un decimo). La pasta di riporto sostituisce parte del lievito: stanca vale 1/300 del suo peso, normale 1/200, vivace 1/100. La compensazione teglia usa il 75% della temperatura. Il lievito secco è calcolato come un terzo del fresco (vale per il secco attivo e per l\'istantaneo).</p></details>';
+  const resEl = document.getElementById("res"), miniIn = document.getElementById("mini-in");
+  const panel = mountPanel(document.getElementById("panel"), "c", t, v, r => {
+    resEl.innerHTML = resultsHtml(t, v, r);
+    miniIn.innerHTML = miniHtml(t, r, v);
+  }, ["yeast"]);
+  resEl.addEventListener("click", e => {
+    const b = e.target.closest("[data-yk]"); if (!b || v.yeast === b.dataset.yk) return;
+    v.yeast = b.dataset.yk; touched[t] = true; saveLocal(); panel.refresh();
+  });
+  if (calcObserver) calcObserver.disconnect();
+  if ("IntersectionObserver" in window){
+    calcObserver = new IntersectionObserver(es => { for (const e of es) mini.classList.toggle("on", !e.isIntersecting && e.boundingClientRect.top < 0); });
+    calcObserver.observe(resEl);
+  }
+  // le modifiche dell'utente rendono "toccato" il tipo (non verrà sovrascritto dai predefiniti in arrivo)
+  document.getElementById("panel").addEventListener("input", () => { touched[t] = true; saveLocal(); });
+  document.getElementById("panel").addEventListener("click", e => { if (e.target.closest(".step,.seg [data-v]")) { touched[t] = true; saveLocal(); } });
+}
+function updatePrefill(){ const el = document.getElementById("prefill"); if (el) el.innerHTML = prefillHtml(calcType); }
+function loadBakeIntoCalc(b){
+  if (!b || !TYPES[b.type]) return;
+  calc[b.type] = {...TYPES[b.type].defaults, ...(b.params || {})};
+  touched[b.type] = true; calcType = b.type; saveLocal();
+  if (location.hash.slice(1) === b.type) render(); else location.hash = b.type;
+  toast("Valori caricati nel calcolatore");
+}
+
+/* ================= vista registro ================= */
+function diagPills(b){
+  const d = b.diag || {};
+  return Object.keys(DIAG).filter(k => d[k] && d[k] !== "ok").map(k => {
+    const o = DIAG[k].opts.find(x => x[0] === d[k]);
+    return '<span class="pill warn">'+esc(DIAG[k].label)+": "+esc(o ? o[1].toLowerCase() : d[k])+"</span>";
+  }).join("");
+}
+function bakeCard(b){
+  const T = TYPES[b.type] || {label:b.type}, p = b.params || {};
+  const thumb = b.photo ? '<img class="thumb" src="'+photoUrl(b.photo)+'" alt="" loading="lazy">' : '<div class="thumb ph">'+(IC[b.type] || pizzaSvg).replace('viewBox','width="30" height="30" viewBox')+"</div>";
+  const line = [qtyText(b.type, p), fmtNum(p.hydro)+"%", p.hours+" h"+(p.fridge ? " ("+p.fridge+" frigo)" : ""), fmtNum(p.temp, 1)+" °C"].join(" · ");
+  const pills = diagPills(b);
+  const note = (b.notes || "").split("\n")[0];
+  return '<button class="card" data-bake="'+esc(b.id)+'">' + thumb +
+    '<div class="t"><div class="row"><span class="name">'+esc(T.label)+"</span>"+stars(b.rating)+"</div>" +
+    '<span class="sub">'+fmtWhen(b.at)+(b.flour ? " · "+esc(b.flour) : "")+"</span>" +
+    '<span class="sub num small">'+esc(line)+"</span>" +
+    (pills ? '<span class="meta">'+pills+"</span>" : "") +
+    (note ? '<span class="note1">'+esc(note)+"</span>" : "") + "</div></button>";
+}
+function renderLog(){
+  const n = dataNotice("Registro impasti", ["b"]); if (n){ app.innerHTML = n; wireLogin(); return; }
+  const all = S.bakes;
+  const types = TYPE_KEYS.filter(k => all.some(b => b.type === k));
+  if (S.bakeFilter !== "all" && !types.includes(S.bakeFilter)) S.bakeFilter = "all";
+  const shown = S.bakeFilter === "all" ? all : all.filter(b => b.type === S.bakeFilter);
+  const rated = shown.filter(b => b.rating);
+  const avg = rated.length ? rated.reduce((s, b) => s + b.rating, 0) / rated.length : 0;
+  let html = '<header class="top"><div><h1>Registro impasti</h1><p>' +
+    (all.length ? shown.length + (shown.length === 1 ? " impasto" : " impasti") + (avg ? " · voto medio " + fmtNum(avg, 1) + " ★" : "") : "Ogni impasto con risultati e note, per migliorare") +
+    '</p></div><a class="btn primary" href="#'+calcType+'">+ Impasto</a></header>';
+  html += nudgeHtml();
+  if (types.length > 1){
+    html += '<div class="chips scroll" role="group" aria-label="Filtra per tipo"><button class="chip" data-bfilter="all" aria-pressed="'+(S.bakeFilter==="all")+'">Tutti</button>' +
+      types.map(k => '<button class="chip" data-bfilter="'+k+'" aria-pressed="'+(S.bakeFilter===k)+'">'+esc(TYPES[k].label)+"</button>").join("") + "</div>";
+  }
+  if (!all.length){
+    html += '<div class="empty"><p>Nessun impasto registrato. Dal calcolatore premi “Salva nel registro”: dopo la cottura aggiungi voto, foto e note.</p><a class="btn primary" href="#'+calcType+'">Vai al calcolatore</a></div>';
+  } else html += '<section class="list">' + shown.map(bakeCard).join("") + "</section>";
+  app.innerHTML = html;
+}
+function tipsFor(b){
+  const out = [], d = b.diag || {};
+  for (const k in DIAG) if (d[k] && TIPS[k + ":" + d[k]]) out.push(TIPS[k + ":" + d[k]]);
+  const r = b.results || {};
+  if (b.flourW && r.W && b.flourW < r.W - 40) out.push("La farina usata (W " + b.flourW + ") è più debole di quella consigliata per " + (b.params && b.params.hours) + " ore (W ≈ " + r.W + "): accorcia la lievitazione o usa una farina più forte.");
+  return out;
+}
+function bakeDetail(b){
+  const T = TYPES[b.type] || {label:b.type, fatName:"Grassi"}, p = b.params || {}, r = b.results || {};
+  const facts = [
+    ["Quantità", qtyText(b.type, p)], ["Idratazione", fmtNum(p.hydro)+"%"], ["Sale", fmtNum(p.salt)+" g/L"],
+    ["Grassi", p.fat ? fmtNum(p.fat)+" g/L" : ""], ["Pasta di riporto", p.pdr ? fmtNum(p.pdr, 1)+"% · "+(BASE.pdrType.options.find(o => o[0] === p.pdrType) || [0,""])[1].toLowerCase() : ""],
+    ["Lievitazione", p.hours+" h"+(p.fridge ? " ("+p.fridge+" in frigo)" : "")], ["Temperatura", fmtNum(p.temp, 1)+" °C"+(p.comp ? " · compensata" : "")],
+    ["Farina", b.flour ? b.flour + (b.flourW ? " · W "+b.flourW : "") : ""],
+    ["Forno", b.oven ? b.oven : ""], ["Cottura", (b.ovenTemp ? b.ovenTemp+" °C" : "") + (b.bakeTime ? " · "+durFmt(b.bakeTime) : "")],
+  ].filter(f => f[1]);
+  const res = [["Farina", r.flour], ["Acqua", r.water], ["Sale", r.salt], [T.fatName, r.fat], ["Pasta di riporto", r.pdr]].filter(x => x[1] >= 0.5);
+  const sc = SCORES.filter(([k]) => b.scores && b.scores[k]);
+  const tips = tipsFor(b);
+  const pills = diagPills(b);
+  const inner =
+    (b.photo ? '<img class="hero-img" src="'+photoUrl(b.photo)+'" alt="Foto dell\'impasto">' : "") +
+    '<div><div class="muted small">'+fmtWhen(b.at)+'</div>'+stars(b.rating)+"</div>" +
+    '<dl class="facts">' + facts.map(f => "<div><dt>"+f[0]+"</dt><dd>"+esc(f[1])+"</dd></div>").join("") + "</dl>" +
+    '<div class="box"><h3>Ingredienti usati</h3><dl class="facts">' + res.map(x => "<div><dt>"+x[0]+'</dt><dd class="rv">'+gHtml(x[1])+"</dd></div>").join("") +
+      '<div><dt>'+(isDry(p) ? "Lievito secco" : "Lievito fresco")+'</dt><dd class="rv">'+yHtml(yeastOf(p, r.yeast || 0))+"</dd></div></dl></div>" +
+    (pills ? '<div class="chips">'+pills+"</div>" : "") +
+    (sc.length ? '<div class="box"><h3>Valutazione</h3><div class="bars">' + sc.map(([k, l]) => '<div class="bar"><span>'+esc(b.type === "pane" && SCORE_PANE[k] || l)+'</span><span class="tr"><i style="width:'+(b.scores[k]*10)+'%"></i></span><span class="num">'+b.scores[k]+"</span></div>").join("") + "</div></div>" : "") +
+    (b.notes ? '<div class="box"><h3>Note</h3><p class="prose">'+esc(b.notes)+"</p></div>" : "") +
+    (tips.length ? '<div class="box tips"><h3>Per la prossima volta</h3><ul>' + tips.map(x => "<li>"+esc(x)+"</li>").join("") + "</ul></div>" : "") +
+    '<div class="actions"><button class="btn primary" data-x="load">Ricarica nel calcolatore</button><button class="btn" data-x="edit">Modifica</button></div>';
+  const s = openSheet(T.label, inner);
+  s.el.querySelector('[data-x="load"]').onclick = () => { s.close(); loadBakeIntoCalc(b); };
+  s.el.querySelector('[data-x="edit"]').onclick = () => { s.close(); bakeForm(b, null); };
+}
+
+/* ================= slider generici per i form ================= */
+function slHtml(k, label, val, min, max, step, out, hint){
+  return '<div class="field sl" data-k="'+k+'"><div class="sl-head"><label for="f-'+k+'">'+esc(label)+'</label><output class="num">'+out+"</output></div>" +
+    '<div class="sl-row"><button type="button" class="step" data-d="-1" aria-label="Diminuisci">−</button><input type="range" id="f-'+k+'" min="'+min+'" max="'+max+'" step="'+step+'" value="'+val+'"><button type="button" class="step" data-d="1" aria-label="Aumenta">+</button></div>' +
+    (hint != null ? '<p class="hint">'+esc(hint)+"</p>" : "") + "</div>";
+}
+function wireSliders(root, vals, fmt){
+  const upd = (el, k) => { el.querySelector("output").textContent = fmt(k, vals[k]); };
+  root.addEventListener("input", e => {
+    const inp = e.target; if (inp.type !== "range") return;
+    const el = inp.closest(".sl[data-k]"); if (!el) return;
+    vals[el.dataset.k] = Number(inp.value); upd(el, el.dataset.k);
+  });
+  root.addEventListener("click", e => {
+    const st = e.target.closest(".sl[data-k] .step"); if (!st) return;
+    const el = st.closest(".sl[data-k]"), k = el.dataset.k, inp = el.querySelector("input[type=range]");
+    vals[k] = snap(Number(vals[k] ?? inp.min) + Number(st.dataset.d) * Number(inp.step), Number(inp.min), Number(inp.max), Number(inp.step));
+    inp.value = vals[k]; upd(el, k);
+  });
+}
+function segHtml(k, label, opts, val){
+  return '<div class="field"><span class="flabel">'+esc(label)+'</span><div class="seg" data-fk="'+k+'" role="radiogroup" aria-label="'+esc(label)+'">' +
+    opts.map(o => { const [v, l] = Array.isArray(o) ? o : [o, o]; return '<button type="button" role="radio" data-v="'+esc(v)+'" aria-checked="'+(val===v)+'">'+esc(l)+"</button>"; }).join("") + "</div></div>";
+}
+function wireSegs(root, vals){
+  root.addEventListener("click", e => {
+    const b = e.target.closest(".seg[data-fk] [data-v]"); if (!b) return;
+    const seg = b.closest(".seg"), k = seg.dataset.fk;
+    const v = vals[k] === b.dataset.v ? null : b.dataset.v;   // secondo tocco: deseleziona
+    vals[k] = v;
+    seg.querySelectorAll("[data-v]").forEach(x => x.setAttribute("aria-checked", String(x.dataset.v === v)));
+  });
+}
+function ratingHtml(id, label){ return '<div class="field"><span class="flabel">'+esc(label)+'</span><div class="rating" id="'+id+'">' + [1,2,3,4,5].map(i => '<button type="button" data-r="'+i+'" aria-label="'+i+' su 5">★</button>').join("") + "</div></div>"; }
+function wireRating(el, get, set){
+  const paint = () => el.querySelectorAll("[data-r]").forEach(x => x.classList.toggle("on", Number(x.dataset.r) <= get()));
+  paint();
+  el.addEventListener("click", e => { const r = e.target.closest("[data-r]"); if (!r) return; const n = Number(r.dataset.r); set(get() === n ? 0 : n); paint(); });
+}
+function chipPickHtml(id, all, selected, addLabel){
+  return '<div class="chips" id="'+id+'">' + all.map(t => '<button type="button" class="chip" data-c="'+esc(t)+'" aria-pressed="'+selected.includes(t)+'">'+esc(t)+"</button>").join("") + "</div>" +
+    '<div class="addrow"><input type="text" id="'+id+'-new" placeholder="'+esc(addLabel)+'" enterkeyhint="done"><button type="button" class="btn small" id="'+id+'-add">Aggiungi</button></div>';
+}
+function wireChipPick(root, id, state, multi, onToggle){
+  const box = root.querySelector("#" + id), inp = root.querySelector("#" + id + "-new");
+  const paint = () => box.querySelectorAll("[data-c]").forEach(x => x.setAttribute("aria-pressed", String(state.sel.includes(x.dataset.c))));
+  box.addEventListener("click", e => {
+    const c = e.target.closest("[data-c]"); if (!c) return;
+    const v = c.dataset.c, on = state.sel.includes(v);
+    if (multi) state.sel = on ? state.sel.filter(x => x !== v) : [...state.sel, v];
+    else state.sel = on ? [] : [v];
+    if (onToggle) onToggle(v, !on);
+    paint();
+  });
+  const add = () => {
+    const v = inp.value.trim().replace(/\s+/g, " "); if (!v) return;
+    let ex = [...box.querySelectorAll("[data-c]")].find(x => x.dataset.c.toLowerCase() === v.toLowerCase());
+    if (!ex){ ex = document.createElement("button"); ex.type = "button"; ex.className = "chip"; ex.dataset.c = v; ex.textContent = v; box.appendChild(ex); }
+    const val = ex.dataset.c;
+    if (multi){ if (!state.sel.includes(val)) state.sel = [...state.sel, val]; } else state.sel = [val];
+    inp.value = ""; paint();
+  };
+  root.querySelector("#" + id + "-add").addEventListener("click", add);
+  inp.addEventListener("keydown", e => { if (e.key === "Enter"){ e.preventDefault(); add(); } });
+}
+function photoBlock(id, cur, label){
+  if (!assets) return "";
+  return '<label class="photo-pick" for="'+id+'">' + (cur ? '<img src="'+photoUrl(cur)+'" alt="">' : "<span>"+pizzaSvg+"<br>"+esc(label)+"</span>") +
+    '<input type="file" id="'+id+'" accept="image/*"></label>' + (cur ? '<button type="button" class="btn ghost small" id="'+id+'-rm">Rimuovi foto</button>' : "");
+}
+function wirePhoto(root, id, label){
+  const st = {file:null, remove:false};
+  const fileIn = root.querySelector("#" + id); if (!fileIn) return st;
+  const pick = fileIn.closest(".photo-pick");
+  fileIn.addEventListener("change", () => {
+    const f = fileIn.files && fileIn.files[0]; if (!f) return;
+    st.file = f; st.remove = false;
+    const old = pick.querySelector("img, span"); if (old) old.remove();
+    const im = document.createElement("img"); im.alt = ""; im.src = URL.createObjectURL(f); pick.insertBefore(im, fileIn);
+  });
+  const rm = root.querySelector("#" + id + "-rm");
+  if (rm) rm.addEventListener("click", () => {
+    st.remove = true; st.file = null;
+    const im = pick.querySelector("img"); if (im) im.remove();
+    const sp = document.createElement("span"); sp.innerHTML = pizzaSvg + "<br>" + esc(label); pick.insertBefore(sp, fileIn); rm.remove();
+  });
+  return st;
+}
+
+/* ================= form impasto ================= */
+function bakeForm(b, seed){
+  if (!db){ toast("Accedi dalla pagina Registro per salvare gli impasti."); return; }
+  const isNew = !b;
+  const d = JSON.parse(JSON.stringify(b || seed));
+  const t = d.type, T = TYPES[t] || TYPES.tonda;
+  const lastSame = S.bakes.find(x => x.type === t && x.id !== d.id);
+  d.scores = d.scores || {}; d.diag = d.diag || {};
+  if (isNew){
+    d.at = d.at || new Date().toISOString();
+    if (lastSame){ d.oven = lastSame.oven || null; if (!d.flour) { d.flour = lastSame.flour || ""; d.flourW = lastSame.flourW || 0; } }
+  }
+  const vals = {
+    flourW: d.flourW || 0,
+    ovenTemp: d.ovenTemp ?? (lastSame && lastSame.ovenTemp) ?? T.oven.temp,
+    bakeTime: d.bakeTime ?? (lastSame && lastSame.bakeTime) ?? T.oven.time,
+    oven: d.oven || null,
+  };
+  for (const [k] of SCORES) vals["s_" + k] = d.scores[k] || 0;
+  for (const k in DIAG) vals["d_" + k] = d.diag[k] || null;
+  let rating = d.rating || 0;
+  const flours = [...new Set(S.bakes.map(x => x.flour).filter(Boolean))].slice(0, 12);
+  if (d.flour && !flours.includes(d.flour)) flours.unshift(d.flour);
+  const flourSt = {sel: d.flour ? [d.flour] : []};
+  const p = d.params || {}, r = d.results || {};
+  const inner = '<form id="bk" novalidate>' +
+    '<div class="summary"><b>'+esc(T.label)+" · "+esc(qtyText(t, p))+"</b><span>"+fmtNum(p.hydro)+"% · sale "+fmtNum(p.salt)+" g/L · "+p.hours+" h"+(p.fridge ? " ("+p.fridge+" frigo)" : "")+" · "+fmtNum(p.temp, 1)+" °C</span>" +
+      '<span class="num">Farina '+fmtG(r.flour)+" · acqua "+fmtG(r.water)+" · lievito "+(isDry(p) ? "secco " : "fresco ")+fmtYeast(yeastOf(p, r.yeast || 0))+"</span></div>" +
+    '<div class="field"><label for="bk-at">Data dell\'impasto</label><input type="datetime-local" id="bk-at" value="'+localDT(new Date(d.at))+'"></div>' +
+    photoBlock("bk-photo", d.photo, "Aggiungi una foto della pizza") +
+    '<section class="group"><h3>Farina</h3>' + chipPickHtml("bk-flour", flours, flourSt.sel, "Nome di una nuova farina…") +
+      slHtml("flourW", "Forza della farina (W)", vals.flourW, 0, 450, 10, vals.flourW ? "W " + vals.flourW : "n.d.", "Consigliato per queste ore: W ≈ " + (r.W || "")) + "</section>" +
+    '<section class="group"><h3>Cottura</h3>' + segHtml("oven", "Forno", OVENS, vals.oven) +
+      slHtml("ovenTemp", "Temperatura del forno", vals.ovenTemp, 150, 500, 10, vals.ovenTemp + " °C") +
+      slHtml("bakeTime", "Tempo di cottura", vals.bakeTime, 15, 3600, 15, durFmt(vals.bakeTime)) + "</section>" +
+    '<section class="group"><h3>Com\'è venuto</h3>' +
+      Object.keys(DIAG).map(k => segHtml("d_" + k, DIAG[k].label, DIAG[k].opts, vals["d_" + k])).join("") +
+      SCORES.map(([k, l]) => slHtml("s_" + k, t === "pane" && SCORE_PANE[k] || l, vals["s_" + k], 0, 10, 1, vals["s_" + k] ? vals["s_" + k] + "/10" : "–")).join("") +
+      ratingHtml("bk-rating", "Voto complessivo") + "</section>" +
+    '<div class="field"><label for="bk-notes">Note per migliorare</label><textarea id="bk-notes" placeholder="Com\'è andata, cosa cambiare la prossima volta…">'+esc(d.notes || "")+"</textarea></div>" +
+    '<div class="form-foot">' + (isNew ? "<span></span>" : '<button type="button" class="btn danger" id="bk-del">Elimina</button>') +
+    '<button type="submit" class="btn primary" id="bk-save">'+(isNew ? "Salva impasto" : "Salva modifiche")+"</button></div></form>";
+  const s = openSheet(isNew ? "Nuovo impasto" : "Modifica impasto", inner);
+  const $ = q => s.el.querySelector(q);
+  const form = $("#bk");
+  wireSliders(form, vals, (k, v) => k === "flourW" ? (v ? "W " + v : "n.d.") : k === "ovenTemp" ? v + " °C" : k === "bakeTime" ? durFmt(v) : (v ? v + "/10" : "–"));
+  wireSegs(form, vals);
+  wireChipPick(form, "bk-flour", flourSt, false);
+  wireRating($("#bk-rating"), () => rating, v => { rating = v; });
+  const ph = wirePhoto(form, "bk-photo", "Aggiungi una foto della pizza");
+  const del = $("#bk-del");
+  if (del) del.addEventListener("click", async () => {
+    if (!(await confirmBox("Eliminare questo impasto dal registro?", "Elimina"))) return;
+    try { await retryOnce(() => db.collection("bakes").doc(b.id).delete()); if (b.photo && assets) assets.delete(b.photo).catch(() => {}); s.close(); toast("Impasto eliminato"); }
+    catch(e){ toast(errMsg(e)); }
+  });
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    const btn = $("#bk-save"); btn.disabled = true; btn.textContent = ph.file ? "Carico la foto…" : "Salvo…";
+    try {
+      let photo = ph.remove ? null : (d.photo || null); const old = d.photo || null;
+      if (ph.file && assets) photo = await uploadPhoto(ph.file);
+      const atv = $("#bk-at").value; const at = atv ? new Date(atv) : new Date();
+      const scores = {}; for (const [k] of SCORES) if (vals["s_" + k]) scores[k] = vals["s_" + k];
+      const diag = {}; for (const k in DIAG) if (vals["d_" + k]) diag[k] = vals["d_" + k];
+      const data = {
+        type:t, params:d.params, results:d.results, at:(isNaN(at) ? new Date() : at).toISOString(),
+        flour:flourSt.sel[0] || "", flourW:vals.flourW || 0, oven:vals.oven || null, ovenTemp:vals.ovenTemp, bakeTime:vals.bakeTime,
+        diag, scores, rating, notes:$("#bk-notes").value.trim(), photo, createdAt:d.createdAt || new Date().toISOString(),
+      };
+      const id = d.id || uid("b");
+      await retryOnce(() => db.collection("bakes").doc(id).set(data));
+      if (old && old !== photo && assets) assets.delete(old).catch(() => {});
+      s.close(); toast(isNew ? "Impasto salvato nel registro" : "Modifiche salvate");
+    } catch(err){ btn.disabled = false; btn.textContent = isNew ? "Salva impasto" : "Salva modifiche"; toast(errMsg(err)); }
+  });
+}
+function roundResults(r){ const o = {}; for (const k of ["total","flour","water","salt","fat","pdr"]) o[k] = Math.round(r[k]); o.yeast = Math.round(r.yeast * 100) / 100; o.W = r.W; return o; }
+
+/* ================= vista gusti ================= */
+function allTags(){
+  const used = new Set(); S.toppings.forEach(x => (x.tags || []).forEach(t => used.add(t)));
+  return [...DEFAULT_TAGS, ...[...used].filter(t => !DEFAULT_TAGS.includes(t)).sort((a,b) => a.localeCompare(b, "it"))];
+}
+function toppingCard(x){
+  const img = x.photo ? '<img src="'+photoUrl(x.photo)+'" alt="" loading="lazy">' : '<div class="ph">'+pizzaSvg+"</div>";
+  const tags = (x.tags || []).slice(0, 3).map(t => '<span class="pill tag">'+esc(t)+"</span>").join("") + ((x.tags || []).length > 3 ? '<span class="pill">+'+(x.tags.length - 3)+"</span>" : "");
+  return '<button class="gcard" data-top="'+esc(x.id)+'">'+img+'<div class="b"><span class="name">'+esc(x.name)+"</span>" +
+    '<span class="muted small">'+[x.base, ...(x.types || []).map(k => TYPES[k] && TYPES[k].tab)].filter(Boolean).map(esc).join(" · ")+"</span>" +
+    (x.rating ? stars(x.rating) : "") + (tags ? '<span class="meta">'+tags+"</span>" : "") + "</div></button>";
+}
+function renderToppings(){
+  const n = dataNotice("Gusti", ["t"]); if (n){ app.innerHTML = n; wireLogin(); return; }
+  const all = [...S.toppings].sort((a, b) => (b.rating || 0) - (a.rating || 0) || (b.createdAt || "").localeCompare(a.createdAt || ""));
+  const used = new Set(); all.forEach(x => (x.tags || []).forEach(t => used.add(t)));
+  const tags = allTags().filter(t => used.has(t));
+  for (const t of [...S.tagFilter]) if (!used.has(t)) S.tagFilter.delete(t);
+  const usedTypes = TYPE_KEYS.filter(k => all.some(x => (x.types || []).includes(k)));
+  if (S.typeFilter && !usedTypes.includes(S.typeFilter)) S.typeFilter = null;
+  const shown = all.filter(x => [...S.tagFilter].every(t => (x.tags || []).includes(t)) && (!S.typeFilter || (x.types || []).includes(S.typeFilter)));
+  let html = '<header class="top"><div><h1>Gusti</h1><p>'+(all.length ? all.length + (all.length === 1 ? " gusto" : " gusti") + " in archivio" : "I tuoi condimenti, con foto e tag")+'</p></div><button class="btn primary" data-act="new-top">+ Gusto</button></header>';
+  if (usedTypes.length > 1) html += '<div class="chips scroll" role="group" aria-label="Filtra per impasto">' + usedTypes.map(k => '<button class="chip" data-tyf="'+k+'" aria-pressed="'+(S.typeFilter===k)+'">'+esc(TYPES[k].tab)+"</button>").join("") + "</div>";
+  if (tags.length) html += '<div class="chips scroll" role="group" aria-label="Filtra per tag">' + tags.map(t => '<button class="chip" data-tagf="'+esc(t)+'" aria-pressed="'+S.tagFilter.has(t)+'">'+esc(t)+"</button>").join("") + "</div>";
+  if (!all.length) html += '<div class="empty"><p>Appunta qui i gusti che ti piacciono: ingredienti, una foto e qualche tag come vegetariana o senza lattosio.</p><button class="btn primary" data-act="new-top">Aggiungi il primo gusto</button></div>';
+  else if (!shown.length) html += '<div class="empty"><p>Nessun gusto con tutti i filtri scelti.</p><button class="btn" data-act="clear-f">Togli i filtri</button></div>';
+  else html += '<section class="ggrid">' + shown.map(toppingCard).join("") + "</section>";
+  app.innerHTML = html;
+}
+function lines(s){ return String(s || "").split("\n").map(x => x.trim()).filter(Boolean); }
+function toppingDetail(x){
+  const inner = (x.photo ? '<img class="hero-img" src="'+photoUrl(x.photo)+'" alt="Foto di '+esc(x.name)+'">' : "") +
+    '<div class="chips">' + [x.base ? '<span class="pill">'+esc(x.base)+"</span>" : "", ...(x.types || []).map(k => TYPES[k] ? '<span class="pill">'+esc(TYPES[k].label)+"</span>" : ""), ...(x.tags || []).map(t => '<span class="pill tag">'+esc(t)+"</span>")].join("") + "</div>" +
+    (x.rating ? "<div>"+stars(x.rating)+"</div>" : "") +
+    (lines(x.before).length ? '<div class="box"><h3>Prima della cottura</h3><ul>'+lines(x.before).map(l => "<li>"+esc(l)+"</li>").join("")+"</ul></div>" : "") +
+    (lines(x.after).length ? '<div class="box"><h3>In uscita</h3><ul>'+lines(x.after).map(l => "<li>"+esc(l)+"</li>").join("")+"</ul></div>" : "") +
+    (x.notes ? '<div class="box"><h3>Note</h3><p class="prose">'+esc(x.notes)+"</p></div>" : "") +
+    '<div class="actions"><button class="btn primary" data-x="edit">Modifica</button></div>';
+  const s = openSheet(x.name, inner);
+  s.el.querySelector('[data-x="edit"]').onclick = () => { s.close(); toppingForm(x); };
+}
+function toppingForm(x){
+  if (!db){ toast("Accedi dalla pagina Gusti per salvare."); return; }
+  const isNew = !x; x = x || {};
+  const vals = {base: x.base || null};
+  const typeSt = {sel: (x.types || []).map(k => TYPES[k] ? TYPES[k].tab : null).filter(Boolean)};
+  const tagSt = {sel: [...(x.tags || [])]};
+  let rating = x.rating || 0;
+  const inner = '<form id="tp" novalidate>' + photoBlock("tp-photo", x.photo, "Aggiungi una foto") +
+    '<div class="field"><label for="tp-name">Nome *</label><input type="text" id="tp-name" value="'+esc(x.name || "")+'" placeholder="es. Patate, salsiccia e provola"></div>' +
+    segHtml("base", "Base", BASES, vals.base) +
+    '<div class="field"><span class="flabel">Adatta a</span><div class="chips" id="tp-types">' + TYPE_KEYS.map(k => '<button type="button" class="chip" data-c="'+TYPES[k].tab+'" aria-pressed="'+typeSt.sel.includes(TYPES[k].tab)+'">'+TYPES[k].tab+"</button>").join("") + "</div></div>" +
+    '<div class="field"><span class="flabel">Tag</span>' + chipPickHtml("tp-tags", allTags(), tagSt.sel, "Nuovo tag…") + "</div>" +
+    '<div class="field"><label for="tp-before">Prima della cottura <span class="muted">(uno per riga)</span></label><textarea id="tp-before" placeholder="Fior di latte&#10;Salsiccia&#10;Patate a fette sottili">'+esc(x.before || "")+"</textarea></div>" +
+    '<div class="field"><label for="tp-after">In uscita <span class="muted">(uno per riga)</span></label><textarea id="tp-after" placeholder="Basilico&#10;Olio a crudo">'+esc(x.after || "")+"</textarea></div>" +
+    ratingHtml("tp-rating", "Quanto ci piace") +
+    '<div class="field"><label for="tp-notes">Note</label><textarea id="tp-notes" placeholder="Dove l\'abbiamo assaggiata, varianti, abbinamenti…">'+esc(x.notes || "")+"</textarea></div>" +
+    '<div class="form-foot">' + (isNew ? "<span></span>" : '<button type="button" class="btn danger" id="tp-del">Elimina gusto</button>') +
+    '<button type="submit" class="btn primary" id="tp-save">'+(isNew ? "Aggiungi" : "Salva")+"</button></div></form>";
+  const s = openSheet(isNew ? "Nuovo gusto" : "Modifica gusto", inner);
+  const $ = q => s.el.querySelector(q);
+  const form = $("#tp");
+  wireSegs(form, vals);
+  // tipi: multi-selezione senza campo "aggiungi"
+  $("#tp-types").addEventListener("click", e => {
+    const c = e.target.closest("[data-c]"); if (!c) return;
+    const v = c.dataset.c, on = typeSt.sel.includes(v);
+    typeSt.sel = on ? typeSt.sel.filter(y => y !== v) : [...typeSt.sel, v];
+    c.setAttribute("aria-pressed", String(!on));
+  });
+  wireChipPick(form, "tp-tags", tagSt, true, (tag, on) => {
+    if (tag === "Vegana" && on){ for (const t of ["Vegetariana", "Senza lattosio"]) if (!tagSt.sel.includes(t)) tagSt.sel.push(t); }
+  });
+  wireRating($("#tp-rating"), () => rating, v => { rating = v; });
+  const ph = wirePhoto(form, "tp-photo", "Aggiungi una foto");
+  if (isNew) setTimeout(() => $("#tp-name").focus(), 50);
+  const del = $("#tp-del");
+  if (del) del.addEventListener("click", async () => {
+    if (!(await confirmBox("Eliminare “" + x.name + "”? Non si può annullare.", "Elimina"))) return;
+    try { await retryOnce(() => db.collection("toppings").doc(x.id).delete()); if (x.photo && assets) assets.delete(x.photo).catch(() => {}); s.close(); toast("Gusto eliminato"); }
+    catch(e){ toast(errMsg(e)); }
+  });
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    const name = $("#tp-name").value.trim();
+    if (!name){ $("#tp-name").focus(); toast("Scrivi il nome del gusto"); return; }
+    const btn = $("#tp-save"); btn.disabled = true; btn.textContent = ph.file ? "Carico la foto…" : "Salvo…";
+    try {
+      let photo = ph.remove ? null : (x.photo || null); const old = x.photo || null;
+      if (ph.file && assets) photo = await uploadPhoto(ph.file);
+      const data = {
+        name, base: vals.base || null,
+        types: TYPE_KEYS.filter(k => typeSt.sel.includes(TYPES[k].tab)),
+        tags: tagSt.sel, before: $("#tp-before").value.trim(), after: $("#tp-after").value.trim(),
+        notes: $("#tp-notes").value.trim(), rating, photo, createdAt: x.createdAt || new Date().toISOString(),
+      };
+      const id = x.id || uid("t");
+      await retryOnce(() => db.collection("toppings").doc(id).set(data));
+      if (old && old !== photo && assets) assets.delete(old).catch(() => {});
+      s.close(); toast(isNew ? "Gusto aggiunto" : "Modifiche salvate");
+    } catch(err){ btn.disabled = false; btn.textContent = isNew ? "Aggiungi" : "Salva"; toast(errMsg(err)); }
+  });
+}
+
+/* ================= vista predefiniti ================= */
+let defDraft = null;
+function renderDefaults(){
+  const t = S.defType, T = TYPES[t];
+  defDraft = {...defaultsFor(t)};
+  const saved = S.defaults[t] && S.defaults[t].updatedAt;
+  let html = '<header class="top"><div><h1>Valori predefiniti</h1><p>Il punto di partenza di ogni nuovo impasto</p></div></header>' +
+    '<div class="types" role="tablist" aria-label="Tipo di impasto">' + TYPE_KEYS.map(k => '<button type="button" role="tab" data-dtype="'+k+'"'+(k===t?' aria-current="true" aria-selected="true"':' aria-selected="false"')+">"+IC[k]+"<span>"+TYPES[k].tab+"</span></button>").join("") + "</div>" +
+    '<p class="lead">'+esc(T.label)+": "+(saved ? "valori personalizzati, salvati il " + fmtDate(saved) + "." : "valori di fabbrica.")+"</p>";
+  if (S.needLogin) html += loginHtml();
+  else if (S.noDb) html += '<div class="notice"><p>Configurazione mancante: inserisci l\'indirizzo e la chiave di Supabase nel file config.js.</p></div>';
+  else if (S.error) html += '<div class="notice"><p>'+esc(S.error)+'</p></div>';
+  html += '<div id="dpanel" class="group"></div>' +
+    '<div class="actions"><button class="btn primary" data-act="save-def"'+(db ? "" : " disabled")+'>Salva predefiniti</button><button class="btn" data-act="factory"'+(db && saved ? "" : " disabled")+'>Torna ai valori di fabbrica</button></div>';
+  html += footerHtml();
+  app.innerHTML = html;
+  wireLogin();
+  mountPanel(document.getElementById("dpanel"), "d", t, defDraft, null);
+}
+async function saveDefaults(t, vals){
+  const clean = {}; for (const k of Object.keys(TYPES[t].defaults)) clean[k] = vals[k];
+  await retryOnce(() => db.collection("defaults").doc(t).set({vals:clean, updatedAt:new Date().toISOString()}));
+}
+
+/* ================= click globali ================= */
+app.addEventListener("click", async e => {
+  const el = e.target.closest("[data-act],[data-bake],[data-bfilter],[data-top],[data-tagf],[data-tyf],[data-dtype],[data-load]");
+  if (!el) return;
+  if (el.dataset.bake){ const b = S.bakes.find(x => x.id === el.dataset.bake); if (b) bakeDetail(b); return; }
+  if (el.dataset.load){ const b = S.bakes.find(x => x.id === el.dataset.load); if (b) loadBakeIntoCalc(b); return; }
+  if (el.dataset.bfilter){ S.bakeFilter = el.dataset.bfilter; render(); return; }
+  if (el.dataset.top){ const x = S.toppings.find(y => y.id === el.dataset.top); if (x) toppingDetail(x); return; }
+  if (el.dataset.tagf){ const t = el.dataset.tagf; S.tagFilter.has(t) ? S.tagFilter.delete(t) : S.tagFilter.add(t); render(); return; }
+  if (el.dataset.tyf){ S.typeFilter = S.typeFilter === el.dataset.tyf ? null : el.dataset.tyf; render(); return; }
+  if (el.dataset.dtype){ S.defType = el.dataset.dtype; render(); return; }
+  const act = el.dataset.act, t = calcType;
+  if (act === "save-bake"){
+    const v = getCalc(t), r = compute(t, v);
+    bakeForm(null, {type:t, params:{...v}, results:roundResults(r)});
+  } else if (act === "reset"){
+    calc[t] = defaultsFor(t); delete touched[t]; saveLocal(); renderCalc(); toast("Predefiniti ripristinati");
+  } else if (act === "as-default"){
+    if (!db){ toast("Accedi dalla pagina Predefiniti per salvarli."); return; }
+    if (!(await confirmBox("Usare questi valori come predefiniti per " + TYPES[t].label.toLowerCase() + "?", "Salva", true))) return;
+    try { await saveDefaults(t, getCalc(t)); toast("Predefiniti salvati"); } catch(err){ toast(errMsg(err)); }
+  } else if (act === "save-def"){
+    const dt = S.defType;
+    try { el.disabled = true; await saveDefaults(dt, defDraft); if (!touched[dt]) calc[dt] = null; toast("Predefiniti salvati per " + TYPES[dt].label.toLowerCase()); }
+    catch(err){ el.disabled = false; toast(errMsg(err)); }
+  } else if (act === "factory"){
+    const dt = S.defType;
+    if (!(await confirmBox("Tornare ai valori di fabbrica per " + TYPES[dt].label.toLowerCase() + "?", "Ripristina"))) return;
+    try { await retryOnce(() => db.collection("defaults").doc(dt).delete()); if (!touched[dt]) calc[dt] = null; toast("Valori di fabbrica ripristinati"); }
+    catch(err){ toast(errMsg(err)); }
+  } else if (act === "new-top") toppingForm(null);
+  else if (act === "clear-f"){ S.tagFilter.clear(); S.typeFilter = null; render(); }
+  else if (act === "export") exportBackup(el);
+  else if (act === "import") importBackup();
+  else if (act === "logout") logout();
+});
+
+/* ================= sheet ================= */
+function openSheet(title, inner, cls){
+  const ov = document.createElement("div");
+  ov.className = "overlay" + (cls ? " " + cls : "");
+  ov.innerHTML = '<div class="sheet" role="dialog" aria-modal="true" aria-label="'+esc(title)+'"><div class="sheet-head"><h2>'+esc(title)+'</h2><button class="btn ghost" data-close>Chiudi</button></div>'+inner+"</div>";
+  document.body.appendChild(ov);
+  document.body.style.overflow = "hidden";
+  const close = () => { ov.remove(); if (!document.querySelector(".overlay")) document.body.style.overflow = ""; };
+  ov.addEventListener("click", e => { if (e.target === ov || e.target.closest("[data-close]")) close(); });
+  ov.addEventListener("keydown", e => { if (e.key === "Escape") close(); });
+  return {el: ov, close};
+}
+function confirmBox(text, okLabel, safe){
+  return new Promise(res => {
+    let done = false; const fin = v => { if (!done){ done = true; res(v); } };
+    const s = openSheet("Conferma", '<p style="margin:0">'+esc(text)+'</p><div class="form-foot"><button class="btn" data-no>Annulla</button><button class="btn primary" data-yes'+(safe ? "" : ' style="background:var(--danger);border-color:var(--danger)"')+">"+esc(okLabel)+"</button></div>");
+    s.el.querySelector("[data-no]").onclick = () => { s.close(); fin(false); };
+    s.el.querySelector("[data-yes]").onclick = () => { s.close(); fin(true); };
+    s.el.addEventListener("click", e => { if (e.target === s.el || e.target.closest("[data-close]")) fin(false); });
+  });
+}
+
+/* ================= backup ================= */
+const blobToDataURL = blob => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(blob); });
+async function withPhotos(list){
+  const out = [];
+  for (const x of list){
+    const o = {...x};
+    if (x.photo){ try { const r = await fetch(photoUrl(x.photo)); if (r.ok) o.photoData = await blobToDataURL(await r.blob()); } catch {} }
+    out.push(o);
+  }
+  return out;
+}
+const backupName = () => "diario-pizza-backup-" + new Date().toISOString().slice(0,10) + ".json";
+async function exportBackup(el){
+  const old = el.textContent; el.disabled = true; el.textContent = "Preparo il file…";
+  try {
+    const json = JSON.stringify({app:"diario-pizza", version:1, exportedAt:new Date().toISOString(), defaults:S.defaults, bakes:await withPhotos(S.bakes), toppings:await withPhotos(S.toppings)});
+    const name = backupName(), file = new File([json], name, {type:"application/json"});
+    if (navigator.canShare && navigator.canShare({files:[file]})){
+      try { await navigator.share({files:[file], title:name}); } catch(e){ if (e && e.name === "AbortError") return; throw e; }
+      await recordBackup(); toast("Backup pronto");
+    } else {
+      const url = URL.createObjectURL(file), a = document.createElement("a");
+      a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+      await recordBackup(); toast("Backup scaricato");
+    }
+  } catch { toast("Esportazione non riuscita. Riprova."); }
+  finally { el.disabled = false; el.textContent = old; }
+}
+function importBackup(){
+  const inp = document.createElement("input");
+  inp.type = "file"; inp.accept = ".json,application/json";
+  inp.addEventListener("change", async () => {
+    const f = inp.files && inp.files[0]; if (!f) return;
+    let data;
+    try { data = JSON.parse(await f.text()); } catch { toast("Il file non è un backup valido."); return; }
+    if (!data || data.app !== "diario-pizza" || !Array.isArray(data.bakes) || !Array.isArray(data.toppings)){ toast("Il file non è un backup del Diario pizza."); return; }
+    if (!(await confirmBox("Importare " + data.bakes.length + " impasti, " + data.toppings.length + " gusti e i predefiniti? Se un elemento è già presente viene sostituito dalla versione del file.", "Importa", true))) return;
+    toast("Importazione in corso…");
+    try {
+      const now = new Date().toISOString();
+      const withPhoto = async list => {
+        const rows = [];
+        for (const x of list){
+          if (!x || !x.id) continue;
+          const {id, photoData, ...rest} = x;
+          let photo = rest.photo && String(rest.photo).includes("/") ? rest.photo : null;
+          if (photoData){ try { const blob = await (await fetch(photoData)).blob(); photo = (await retryOnce(() => assets.upload(blob, {type: blob.type || "image/jpeg"}))).id; } catch {} }
+          rows.push({id:String(id), data:{...rest, photo}, updated_at:now});
+        }
+        return rows;
+      };
+      const defRows = Object.entries(data.defaults || {}).filter(([k]) => TYPES[k]).map(([k, v]) => ({id:k, data:v, updated_at:now}));
+      const bakeRows = await withPhoto(data.bakes), topRows = await withPhoto(data.toppings);
+      for (const [table, rows] of [[TABLES.defaults, defRows], [TABLES.bakes, bakeRows], [TABLES.toppings, topRows]]){
+        for (let i = 0; i < rows.length; i += 200){ const {error} = await sb.from(table).upsert(rows.slice(i, i + 200)); if (error) throw wrapErr(error); }
+      }
+      await refresh(true);
+      toast("Importati " + bakeRows.length + " impasti e " + topRows.length + " gusti");
+    } catch(e){ toast(errMsg(e)); }
+  });
+  inp.click();
+}
+
+/* ================= Supabase: archivio, foto, accesso ================= */
+let sb = null, session = null;
+const CACHE_KEY = "diario-pizza-cache-v1";
+const TABLES = {defaults:"pizza_defaults", bakes:"pizza_bakes", toppings:"pizza_toppings"};
+const KIND = {defaults:"d", bakes:"b", toppings:"t"};
+function wrapErr(error){
+  const m = String((error && error.message) || "");
+  const st = error && (error.status || error.statusCode);
+  if (!navigator.onLine || /fetch|network|load failed/i.test(m)) return {code:"unavailable", message:m};
+  if (st == 401 || st == 403 || (error && error.code === "42501")) return {code:"invalid_argument", message:m};
+  if (st == 413) return {code:"too_large", message:m};
+  if (error && error.code === "42P01") return {code:"no_table", message:m};
+  return {code:"error", message:m};
+}
+const sortBakes = () => S.bakes.sort((a, b) => (b.at || "").localeCompare(a.at || ""));
+let cacheTimer = null;
+function saveCache(){
+  clearTimeout(cacheTimer);
+  cacheTimer = setTimeout(() => {
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify({u: session && session.user.id, defaults:S.defaults, bakes:S.bakes, toppings:S.toppings})); } catch {}
+  }, 300);
+}
+function loadCache(){
+  try {
+    const c = JSON.parse(localStorage.getItem(CACHE_KEY) || "null");
+    if (!c || !session || c.u !== session.user.id) return false;
+    S.defaults = c.defaults || {}; S.bakes = c.bakes || []; S.toppings = c.toppings || []; sortBakes();
+    S.loaded = {d:true, b:true, t:true}; return true;
+  } catch { return false; }
+}
+function applyRow(col, id, data){
+  if (col === "defaults"){ if (data) S.defaults[id] = data; else delete S.defaults[id]; }
+  else { S[col] = S[col].filter(x => x.id !== id); if (data) S[col].push({id, ...data}); if (col === "bakes") sortBakes(); }
+  saveCache(); onData(KIND[col]);
+}
+function makeDb(){
+  return { collection(col){ return { doc(id){ return {
+    async set(data){
+      const {error} = await sb.from(TABLES[col]).upsert({id, data, updated_at:new Date().toISOString()});
+      if (error) throw wrapErr(error);
+      applyRow(col, id, data);
+    },
+    async delete(){
+      const {error} = await sb.from(TABLES[col]).delete().eq("id", id);
+      if (error) throw wrapErr(error);
+      applyRow(col, id, null);
+    },
+  }; } }; } };
+}
+function makeAssets(){
+  return {
+    async upload(blob, opts){
+      const type = (opts && opts.type) || blob.type || "image/jpeg";
+      const ext = type === "image/png" ? "png" : type === "image/webp" ? "webp" : type === "image/gif" ? "gif" : "jpg";
+      const path = session.user.id + "/pizza/" + uid("p") + "." + ext;
+      const {error} = await sb.storage.from("photos").upload(path, blob, {contentType:type, cacheControl:"31536000", upsert:false});
+      if (error) throw wrapErr(error);
+      return {id: path};
+    },
+    async delete(path){ if (path && path.includes("/")) await sb.storage.from("photos").remove([path]); },
+  };
+}
+async function fetchAll(table){
+  const out = [];
+  for (let from = 0; ; from += 1000){
+    const {data, error} = await sb.from(table).select("id,data").range(from, from + 999);
+    if (error) throw wrapErr(error);
+    out.push(...data);
+    if (data.length < 1000) break;
+  }
+  return out;
+}
+let refreshing = false;
+async function refresh(force){
+  if (refreshing) return; refreshing = true;
+  const before = {d:JSON.stringify(S.defaults), b:JSON.stringify(S.bakes), t:JSON.stringify(S.toppings)};
+  const first = !(S.loaded.d && S.loaded.b && S.loaded.t);
+  try {
+    const [d, b, t] = await Promise.all([fetchAll(TABLES.defaults), fetchAll(TABLES.bakes), fetchAll(TABLES.toppings)]);
+    S.defaults = Object.fromEntries(d.map(r => [r.id, r.data || {}]));
+    S.bakes = b.map(r => ({id:r.id, ...(r.data || {})})); sortBakes();
+    S.toppings = t.map(r => ({id:r.id, ...(r.data || {})}));
+    S.loaded = {d:true, b:true, t:true}; S.offline = false; S.error = null;
+    saveCache();
+    if (first || force){ onData("d"); onData("init"); return; }
+    if (JSON.stringify(S.defaults) !== before.d) onData("d");
+    if (JSON.stringify(S.bakes) !== before.b) onData("b");
+    if (JSON.stringify(S.toppings) !== before.t) onData("t");
+  } catch(e){
+    S.offline = true;
+    if (first){
+      S.error = e && e.code === "no_table"
+        ? "Le tabelle della pizza non esistono ancora su Supabase: esegui il file supabase/schema.sql nel SQL Editor (vedi README)."
+        : "Non riesco a raggiungere l'archivio. Controlla la connessione e riapri l'app.";
+      onData("err");
+    }
+  } finally { refreshing = false; }
+}
+let channel = null;
+function subscribe(){
+  if (channel) return;
+  const onChange = col => p => {
+    if (p.eventType === "DELETE"){ if (p.old && p.old.id) applyRow(col, p.old.id, null); }
+    else if (p.new && p.new.id) applyRow(col, p.new.id, p.new.data);
+  };
+  let ch = sb.channel("diario-pizza");
+  for (const col of Object.keys(TABLES)) ch = ch.on("postgres_changes", {event:"*", schema:"public", table:TABLES[col]}, onChange(col));
+  channel = ch.subscribe();
+}
+async function startData(){
+  S.needLogin = false;
+  sb.auth.getUser().then(({data}) => { if (data && data.user && session) session = {...session, user:data.user}; }).catch(() => {});
+  db = makeDb(); assets = makeAssets();
+  if (loadCache()) onData("init"); else onData("init");
+  await refresh();
+  subscribe();
+}
+
+/* ================= accesso ================= */
+function loginHtml(){
+  return '<form class="login" id="login" novalidate><p style="margin:0">Accedi con lo stesso account del Diario caffè per vedere registro, gusti e predefiniti su tutti i dispositivi. Il calcolatore funziona anche senza accesso.</p>' +
+    '<div class="field"><label for="lg-email">Email</label><input type="text" inputmode="email" autocomplete="username" autocapitalize="off" id="lg-email"></div>' +
+    '<div class="field"><label for="lg-pass">Password</label><input type="password" autocomplete="current-password" id="lg-pass"></div>' +
+    '<p class="err" id="lg-err" hidden></p>' +
+    '<button class="btn primary" type="submit" id="lg-go" style="align-self:flex-start">Accedi</button></form>';
+}
+function wireLogin(){
+  const f = document.getElementById("login"); if (!f) return;
+  f.addEventListener("submit", async e => {
+    e.preventDefault();
+    const err = document.getElementById("lg-err"), btn = document.getElementById("lg-go");
+    const email = document.getElementById("lg-email").value.trim(), password = document.getElementById("lg-pass").value;
+    if (!email || !password){ err.hidden = false; err.textContent = "Inserisci email e password."; return; }
+    btn.disabled = true; btn.textContent = "Accesso…"; err.hidden = true;
+    const {data, error} = await sb.auth.signInWithPassword({email, password});
+    if (error){
+      btn.disabled = false; btn.textContent = "Accedi"; err.hidden = false;
+      err.textContent = /invalid/i.test(error.message) ? "Email o password non corrette." : "Accesso non riuscito: controlla la connessione e riprova.";
+      return;
+    }
+    session = data.session; startData();
+  });
+}
+async function logout(){
+  if (!(await confirmBox("Uscire dal diario su questo dispositivo? I dati restano salvati online.", "Esci"))) return;
+  try { await sb.auth.signOut(); } catch {}
+  try { localStorage.removeItem(CACHE_KEY); } catch {}
+  if (channel){ sb.removeChannel(channel); channel = null; }
+  session = null; db = null; assets = null;
+  S.defaults = {}; S.bakes = []; S.toppings = []; S.loaded = {d:false, b:false, t:false}; S.needLogin = true;
+  for (const k of TYPE_KEYS) if (!touched[k]) calc[k] = null;
+  render();
+}
+
+/* ================= promemoria backup ================= */
+const BACKUP_EVERY_DAYS = 14;
+const lastBackup = () => (session && session.user && session.user.user_metadata && session.user.user_metadata.lastBackupPizza) || null;
+function nudgeHtml(){
+  if (!session || !(S.bakes.length || S.toppings.length)) return "";
+  const lb = lastBackup();
+  const days = lb ? Math.floor((Date.now() - new Date(lb).getTime()) / 864e5) : null;
+  if (days != null && days < BACKUP_EVERY_DAYS) return "";
+  const txt = lb ? "Ultimo backup " + (days === 1 ? "ieri" : days + " giorni fa") : "Non hai ancora fatto un backup";
+  return '<div class="nudge" role="status"><span>' + txt + '. Salvane una copia su iCloud Drive.</span><button class="btn small" data-act="export">Esporta ora</button></div>';
+}
+async function recordBackup(){
+  const at = new Date().toISOString();
+  try {
+    const {data, error} = await sb.auth.updateUser({data:{lastBackupPizza:at}});
+    if (!error && data && data.user && session) session = {...session, user:data.user};
+  } catch {}
+  if (session && session.user) session.user.user_metadata = {...(session.user.user_metadata || {}), lastBackupPizza:at};
+  if (currentView() !== "predefiniti") render();
+}
+function footerHtml(){
+  if (!db) return "";
+  return '<footer class="foot"><button class="btn" data-act="export">Esporta backup</button><button class="btn" data-act="import">Importa backup</button><button class="btn" data-act="logout">Esci</button>' +
+    (session ? '<span class="who">Accesso come ' + esc(session.user.email || "") + (lastBackup() ? " · ultimo backup " + fmtDate(lastBackup()) : "") + "</span>" : "") +
+    '<span class="who">Il backup contiene predefiniti, registro e gusti, con le foto.</span></footer>';
+}
+
+/* ================= avvio ================= */
+loadLocal();
+render();
+function onData(kind){
+  const vw = currentView();
+  if (TYPES[vw]){
+    if ((kind === "d" || kind === "init") && !touched[vw]) { calc[vw] = defaultsFor(vw); renderCalc(); }
+    else updatePrefill();
+    for (const k of TYPE_KEYS) if (!touched[k] && k !== vw) calc[k] = null;
+    return;
+  }
+  if (kind === "d") for (const k of TYPE_KEYS) if (!touched[k]) calc[k] = null;
+  if (vw === "predefiniti" && kind !== "d" && kind !== "init" && kind !== "err") return;   // non perdere modifiche in corso
+  render();
+}
+if ("serviceWorker" in navigator && location.protocol === "https:"){
+  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+}
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && db) refresh(); });
+window.addEventListener("online", () => { if (db) refresh(); });
+(async () => {
+  if (!CFG.supabaseUrl || !CFG.supabaseKey || !window.supabase){ S.noDb = true; onData("init"); return; }
+  sb = window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseKey, {auth:{persistSession:true, autoRefreshToken:true}});
+  const {data} = await sb.auth.getSession();
+  session = data && data.session;
+  sb.auth.onAuthStateChange((_evt, s) => { if (s) session = s; });
+  if (!session){ S.needLogin = true; onData("init"); return; }
+  startData();
+})();
+})();
+</script>
+</body>
+</html>
