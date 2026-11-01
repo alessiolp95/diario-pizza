@@ -1003,15 +1003,15 @@ function openShortcut(lines){
 }
 const SETUP_STEPS = [
   "Nell'app <b>Promemoria</b> crea una lista chiamata <b>Pizza</b>.",
-  "Apri l'app <b>Comandi</b>, tocca <b>+</b> e rinomina il comando in <b>Promemoria pizza</b> (tocca il nome in alto).",
-  "Aggiungi l'azione <b>Dividi testo</b>: come testo scegli <b>Input comando rapido</b>, come separatore <b>Nuove righe</b>.",
-  "Aggiungi <b>Ripeti con ognuno</b>, applicato al <b>Testo diviso</b> del passo precedente. Le azioni seguenti vanno tutte dentro il ciclo.",
-  "Aggiungi <b>Dividi testo</b>: testo <b>Elemento ripetuto</b>, separatore <b>Personalizzato</b> e scrivi il carattere <b>|</b> (barra verticale).",
-  "Aggiungi <b>Ottieni elemento dall'elenco</b>: <b>Primo elemento</b> di <b>Testo diviso</b> (quello del passo 5). Poi <b>Imposta variabile</b> con nome <b>Minuti</b>.",
-  "Aggiungi di nuovo <b>Ottieni elemento dall'elenco</b>: <b>Ultimo elemento</b> dello stesso <b>Testo diviso</b> del passo 5. Poi <b>Imposta variabile</b> con nome <b>Titolo</b>.",
-  "Aggiungi <b>Regola data</b>: <b>Aggiungi</b> la variabile <b>Minuti</b>, unità <b>minuti</b>, a <b>Data attuale</b>.",
-  "Aggiungi <b>Aggiungi nuovo promemoria</b>: come testo la variabile <b>Titolo</b>, lista <b>Pizza</b>. Apri le opzioni dell'azione (freccia) e imposta l'avviso a una data scegliendo la variabile <b>Data regolata</b>.",
-  "Torna qui e premi <b>Invia un promemoria di prova</b>: fra un minuto dovrebbe suonare un promemoria nella lista Pizza.",
+  "Apri l'app <b>Comandi Rapidi</b>, tocca <b>+</b> in alto a destra, poi tocca il nome in alto e rinominalo <b>Promemoria pizza</b>.",
+  "Cerca <b>suddividi</b> e aggiungi <b>Suddividi testo</b>. Tocca il campo del testo e scegli <b>Input comando rapido</b>; tocca il separatore e scegli <b>Nuove righe</b>.",
+  "Cerca <b>ripeti</b> e aggiungi <b>Ripeti con ogni</b>: deve riferirsi a <b>Testo suddiviso</b>. Compaiono due righe, “Ripeti con ogni” e “Fine ripetizione”: le azioni seguenti vanno tutte in mezzo (se una finisce sotto, tienila premuta e trascinala sopra “Fine ripetizione”).",
+  "Aggiungi un altro <b>Suddividi testo</b>: testo <b>Ripeti elemento</b>, separatore <b>Personalizzato</b> e scrivi solo il carattere <b>|</b> (barra verticale: sulla tastiera è nei simboli #+=).",
+  "Cerca <b>elemento</b> e aggiungi <b>Ottieni elemento dall'elenco</b>: <b>Primo elemento</b> del <b>Testo suddiviso</b> del passo 5. Poi cerca <b>variabile</b>, aggiungi <b>Imposta variabile</b> e chiamala <b>Minuti</b>.",
+  "Aggiungi di nuovo <b>Ottieni elemento dall'elenco</b>: <b>Ultimo elemento</b>, e come elenco scegli lo stesso <b>Testo suddiviso</b> del passo 5. Poi <b>Imposta variabile</b> chiamata <b>Titolo</b>.",
+  "Cerca <b>regola</b> e aggiungi <b>Regola data</b>: <b>Aggiungi</b>, come numero la variabile <b>Minuti</b>, unità <b>minuti</b>, data <b>Data attuale</b>.",
+  "Cerca <b>promemoria</b> e aggiungi <b>Aggiungi nuovo promemoria</b>: come testo la variabile <b>Titolo</b>, come lista <b>Pizza</b>. Espandi l'azione (freccia) e imposta l'avviso a una data scegliendo il risultato di <b>Regola data</b>.",
+  "Tocca <b>Fine</b>, torna qui e premi <b>Invia un promemoria di prova</b>: fra un minuto dovrebbe arrivare un promemoria nella lista Pizza.",
 ];
 function remindersSheet(){
   const t = calcType, T = TYPES[t], v = getCalc(t);
@@ -1049,7 +1049,7 @@ function remindersSheet(){
     '<div class="form-foot"><span class="hint" id="rm-count"></span><button type="button" class="btn primary" id="rm-go">Crea in Promemoria</button></div>' +
     '<details class="how"><summary>Prima volta? Crea il comando rapido</summary><p>Serve una sola volta, su iPhone (e se vuoi anche sul Mac). L\'app passa al comando “'+SHORTCUT+'” l\'elenco dei promemoria e il comando li crea nell\'app Promemoria.</p><ol>' +
       SETUP_STEPS.map(s => "<li>"+s+"</li>").join("") + '</ol><button type="button" class="btn small" id="rm-test">Invia un promemoria di prova</button>' +
-      '<p>Se iOS chiede il permesso di aprire Comandi o di aggiungere promemoria, scegli <b>Consenti sempre</b>. Dopo l\'invio torna qui con il tasto in alto a sinistra.</p></details>';
+      '<p>Se iOS chiede il permesso di aprire Comandi Rapidi o di aggiungere promemoria, scegli <b>Consenti sempre</b>. Dopo l\'invio torna qui con il tasto in alto a sinistra.</p></details>';
   const s = openSheet("Promemoria", inner);
   const $ = q => s.el.querySelector(q);
   const all = {...vals, minutes: st.minutes};

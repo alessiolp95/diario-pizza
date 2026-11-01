@@ -38,17 +38,17 @@ che li crea nella lista **Pizza** dell'app Promemoria con l'avviso all'ora giust
 
 Il testo passato al comando ha una riga per promemoria: `minuti da adesso|titolo`.
 
-Il comando va creato una volta nell'app Comandi:
+Il comando va creato una volta nell'app Comandi Rapidi (i nomi sono quelli di iOS in italiano):
 
 1. In Promemoria crea la lista **Pizza**.
-2. In Comandi tocca **+** e chiama il comando **Promemoria pizza**.
-3. **Dividi testo**: testo = Input comando rapido, separatore = Nuove righe.
-4. **Ripeti con ognuno** sul Testo diviso. Tutto quel che segue va dentro il ciclo.
-5. **Dividi testo**: testo = Elemento ripetuto, separatore personalizzato `|`.
-6. **Ottieni elemento dall'elenco**: Primo elemento del Testo diviso del passo 5 → **Imposta variabile** `Minuti`.
-7. **Ottieni elemento dall'elenco**: Ultimo elemento dello stesso Testo diviso → **Imposta variabile** `Titolo`.
+2. In Comandi Rapidi tocca **+** e chiama il comando **Promemoria pizza**.
+3. **Suddividi testo**: testo = Input comando rapido, separatore = Nuove righe.
+4. **Ripeti con ogni** sul Testo suddiviso. Tutto quel che segue va tra "Ripeti con ogni" e "Fine ripetizione".
+5. **Suddividi testo**: testo = Ripeti elemento, separatore personalizzato `|`.
+6. **Ottieni elemento dall'elenco**: Primo elemento del Testo suddiviso del passo 5 → **Imposta variabile** `Minuti`.
+7. **Ottieni elemento dall'elenco**: Ultimo elemento dello stesso Testo suddiviso → **Imposta variabile** `Titolo`.
 8. **Regola data**: aggiungi `Minuti` minuti a Data attuale.
-9. **Aggiungi nuovo promemoria**: testo `Titolo`, lista Pizza, avviso alla data = Data regolata.
+9. **Aggiungi nuovo promemoria**: testo `Titolo`, lista Pizza, avviso alla data = risultato di Regola data.
 
 Le stesse istruzioni sono nell'app, con un pulsante per inviare un promemoria di prova.
 
