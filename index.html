@@ -223,6 +223,15 @@ textarea{min-height:96px;resize:vertical;line-height:1.45}
 .login .err{color:var(--danger);margin:0;font-size:14px}
 input[type=password]{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:16px;min-height:44px}
 .nudge{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 12px;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--crust);border-radius:12px;padding:10px 12px;font-size:14px}
+.seg.days{flex-wrap:nowrap}
+.seg.days button{flex:1 1 0;min-width:0;padding:6px 2px;font-size:14px;white-space:nowrap}
+.card.rm{grid-template-columns:28px 1fr;padding:10px 12px}
+.rm-check{width:24px;height:24px;border-radius:7px;border:1.5px solid var(--line);display:grid;place-items:center;font-size:15px;font-weight:600;color:var(--accent-ink)}
+.card.rm[aria-pressed="true"] .rm-check{background:var(--accent);border-color:var(--accent)}
+.card.rm[aria-pressed="false"] .name{color:var(--muted)}
+.card.rm:disabled{opacity:.5;cursor:default}
+details.how ol{margin:8px 0;padding-left:20px;display:flex;flex-direction:column;gap:6px;color:var(--ink)}
+details.how .btn{margin-top:4px}
 details.how{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:14px}
 details.how summary{cursor:pointer;font-weight:500}
 details.how p{margin:8px 0 0;color:var(--muted)}
@@ -324,6 +333,7 @@ const TYPES = {
 };
 const TYPE_KEYS = Object.keys(TYPES);
 const ADVANCED = ["fat","pdr","pdrType"];
+for (const k of Object.keys(TYPES)) Object.assign(TYPES[k].defaults, {folds:3, foldGap:60, post:null, ovenLead:30});
 for (const k of TYPE_KEYS){ TYPES[k].fields.push("yeast"); TYPES[k].defaults.yeast = "fresco"; }
 let advOpen = false;
 const isDry = v => v && v.yeast === "secco";
@@ -671,7 +681,7 @@ function renderCalc(){
     '<section class="res" id="res" aria-live="polite"></section>' +
     '<div class="prefill" id="prefill">'+prefillHtml(t)+"</div>" +
     '<div id="panel" class="group"></div>' +
-    '<div class="actions"><button class="btn primary" data-act="save-bake">Salva nel registro</button><button class="btn" data-act="as-default">Usa come predefiniti</button><button class="btn" data-act="reset">Ripristina predefiniti</button></div>' +
+    '<div class="actions"><button class="btn primary" data-act="save-bake">Salva nel registro</button><button class="btn" data-act="reminders">Promemoria</button><button class="btn" data-act="as-default">Usa come predefiniti</button><button class="btn" data-act="reset">Ripristina predefiniti</button></div>' +
     '<details class="how"><summary>Come funziona il calcolo</summary><p>Le formule sono quelle del Calcolapizza 2.1 della Confraternita della Pizza: il lievito dipende da idratazione, sale, grassi, temperatura e ore (in frigo valgono circa un decimo). La pasta di riporto sostituisce parte del lievito: stanca vale 1/300 del suo peso, normale 1/200, vivace 1/100. La compensazione teglia usa il 75% della temperatura. Il lievito secco è calcolato come un terzo del fresco (vale per il secco attivo e per l\'istantaneo).</p></details>';
   const resEl = document.getElementById("res"), miniIn = document.getElementById("mini-in");
   const panel = mountPanel(document.getElementById("panel"), "c", t, v, r => {
@@ -784,18 +794,18 @@ function slHtml(k, label, val, min, max, step, out, hint){
     '<div class="sl-row"><button type="button" class="step" data-d="-1" aria-label="Diminuisci">−</button><input type="range" id="f-'+k+'" min="'+min+'" max="'+max+'" step="'+step+'" value="'+val+'"><button type="button" class="step" data-d="1" aria-label="Aumenta">+</button></div>' +
     (hint != null ? '<p class="hint">'+esc(hint)+"</p>" : "") + "</div>";
 }
-function wireSliders(root, vals, fmt){
+function wireSliders(root, vals, fmt, onSet){
   const upd = (el, k) => { el.querySelector("output").textContent = fmt(k, vals[k]); };
   root.addEventListener("input", e => {
     const inp = e.target; if (inp.type !== "range") return;
     const el = inp.closest(".sl[data-k]"); if (!el) return;
-    vals[el.dataset.k] = Number(inp.value); upd(el, el.dataset.k);
+    vals[el.dataset.k] = Number(inp.value); upd(el, el.dataset.k); if (onSet) onSet(el.dataset.k);
   });
   root.addEventListener("click", e => {
     const st = e.target.closest(".sl[data-k] .step"); if (!st) return;
     const el = st.closest(".sl[data-k]"), k = el.dataset.k, inp = el.querySelector("input[type=range]");
     vals[k] = snap(Number(vals[k] ?? inp.min) + Number(st.dataset.d) * Number(inp.step), Number(inp.min), Number(inp.max), Number(inp.step));
-    inp.value = vals[k]; upd(el, k);
+    inp.value = vals[k]; upd(el, k); if (onSet) onSet(k);
   });
 }
 function segHtml(k, label, opts, val){
@@ -946,6 +956,152 @@ function bakeForm(b, seed){
 }
 function roundResults(r){ const o = {}; for (const k of ["total","flour","water","salt","fat","pdr"]) o[k] = Math.round(r[k]); o.yeast = Math.round(r.yeast * 100) / 100; o.W = r.W; return o; }
 
+/* ================= promemoria: Comandi rapidi → app Promemoria ================= */
+// L'app passa al comando rapido "Promemoria pizza" una riga per promemoria: "minuti da adesso|titolo".
+// Il comando crea ogni promemoria nella lista "Pizza" con l'avviso all'ora giusta.
+const SHORTCUT = "Promemoria pizza";
+const REM_KEY = "diario-pizza-rem";
+const STAGLIO = {tonda:"Staglio dei panielli", romana:"Staglio dei panielli", teglia:"Staglio per le teglie", pane:"Formatura delle pagnotte"};
+const DINNER = t => t === "pane" ? "Fine lievitazione" : "Ora di cena";
+function remPrefs(){ try { return JSON.parse(localStorage.getItem(REM_KEY) || "{}") || {}; } catch { return {}; } }
+function saveRemPrefs(o){ try { localStorage.setItem(REM_KEY, JSON.stringify(o)); } catch {} }
+const fmtHM = d => d.toLocaleTimeString("it-IT", {hour:"2-digit", minute:"2-digit"});
+const dayIndex = d => Math.round((new Date(d).setHours(0,0,0,0) - new Date().setHours(0,0,0,0)) / 864e5);
+const dayName = (i, d) => i === 0 ? "oggi" : i === 1 ? "domani" : i === 2 ? "dopodomani" : d.toLocaleDateString("it-IT", {weekday:"long", day:"numeric", month:"short"});
+const fmtDayHM = d => dayName(dayIndex(d), d) + " alle " + fmtHM(d);
+const hm = m => String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
+function postMax(v){ const I = v.hours, F = Math.min(v.fridge, I - 1); return F > 0 ? I - F : I; }
+// ore tra staglio e cena, se non scelte: con il frigo, quelle che restano dopo pieghe + frigo; senza frigo, circa il 40% della lievitazione
+function autoPost(v, folds, gap){
+  const I = v.hours, F = Math.min(v.fridge, I - 1), foldsH = folds * gap / 60;
+  const x = F > 0 ? I - F - foldsH : Math.min(I - foldsH, I * 0.4);
+  return Math.max(0, Math.min(postMax(v), Math.round(x * 2) / 2));
+}
+function buildPlan(t, v, st){
+  const I = v.hours, F = Math.min(v.fridge, I - 1);
+  const base = new Date(); base.setHours(0, 0, 0, 0); base.setDate(base.getDate() + st.day);
+  const anchor = new Date(base.getTime() + st.minutes * 60000);
+  const start = st.anchor === "start" ? anchor : new Date(anchor.getTime() - I * 3600e3);
+  const dinner = new Date(start.getTime() + I * 3600e3);
+  const post = Math.min(v.post, postMax(v));
+  const staglio = new Date(dinner.getTime() - post * 3600e3);
+  const fridgeIn = F > 0 ? new Date(staglio.getTime() - F * 3600e3) : null;
+  const items = [];
+  for (let i = 1; i <= v.folds; i++) items.push({k:"fold" + i, title:"Pieghe di rinforzo (" + i + "ª di " + v.folds + ")", at:new Date(start.getTime() + i * v.foldGap * 60000)});
+  if (fridgeIn) items.push({k:"fridge", title:"Metti l'impasto in frigo", at:fridgeIn, optional:true});
+  items.push({k:"staglio", title:STAGLIO[t] + (F > 0 ? ": togli l'impasto dal frigo" : ""), at:staglio});
+  items.push({k:"oven", title:"Accendi il forno", at:new Date(dinner.getTime() - v.ovenLead * 60000)});
+  items.sort((a, b) => a.at - b.at);
+  const lastFold = v.folds ? new Date(start.getTime() + v.folds * v.foldGap * 60000) : null;
+  const warn = lastFold && lastFold > (fridgeIn || staglio) ? (fridgeIn ? "Le pieghe finiscono dopo l'ingresso in frigo: aumenta le ore fuori dal frigo o riduci le pieghe." : "Le pieghe finiscono dopo lo staglio.") : "";
+  return {start, dinner, staglio, fridgeIn, items, warn, F};
+}
+function shortcutUrl(text){ return "shortcuts://run-shortcut?name=" + encodeURIComponent(SHORTCUT) + "&input=text&text=" + encodeURIComponent(text); }
+function openShortcut(lines){
+  try { location.href = shortcutUrl(lines.join("\n")); }
+  catch { toast("Non riesco ad aprire l'app Comandi."); }
+}
+const SETUP_STEPS = [
+  "Nell'app <b>Promemoria</b> crea una lista chiamata <b>Pizza</b>.",
+  "Apri l'app <b>Comandi</b>, tocca <b>+</b> e rinomina il comando in <b>Promemoria pizza</b> (tocca il nome in alto).",
+  "Aggiungi l'azione <b>Dividi testo</b>: come testo scegli <b>Input comando rapido</b>, come separatore <b>Nuove righe</b>.",
+  "Aggiungi <b>Ripeti con ognuno</b>, applicato al <b>Testo diviso</b> del passo precedente. Le azioni seguenti vanno tutte dentro il ciclo.",
+  "Aggiungi <b>Dividi testo</b>: testo <b>Elemento ripetuto</b>, separatore <b>Personalizzato</b> e scrivi il carattere <b>|</b> (barra verticale).",
+  "Aggiungi <b>Ottieni elemento dall'elenco</b>: <b>Primo elemento</b> di <b>Testo diviso</b> (quello del passo 5). Poi <b>Imposta variabile</b> con nome <b>Minuti</b>.",
+  "Aggiungi di nuovo <b>Ottieni elemento dall'elenco</b>: <b>Ultimo elemento</b> dello stesso <b>Testo diviso</b> del passo 5. Poi <b>Imposta variabile</b> con nome <b>Titolo</b>.",
+  "Aggiungi <b>Regola data</b>: <b>Aggiungi</b> la variabile <b>Minuti</b>, unità <b>minuti</b>, a <b>Data attuale</b>.",
+  "Aggiungi <b>Aggiungi nuovo promemoria</b>: come testo la variabile <b>Titolo</b>, lista <b>Pizza</b>. Apri le opzioni dell'azione (freccia) e imposta l'avviso a una data scegliendo la variabile <b>Data regolata</b>.",
+  "Torna qui e premi <b>Invia un promemoria di prova</b>: fra un minuto dovrebbe suonare un promemoria nella lista Pizza.",
+];
+function remindersSheet(){
+  const t = calcType, T = TYPES[t], v = getCalc(t);
+  const prefs = remPrefs();
+  const vals = {
+    folds: v.folds ?? 3, foldGap: v.foldGap ?? 60, post: v.post != null ? Math.min(v.post, postMax(v)) : autoPost(v, v.folds ?? 3, v.foldGap ?? 60), ovenLead: v.ovenLead ?? 30,
+  };
+  const st = {anchor: prefs.anchor === "dinner" ? "dinner" : "start", day: 0, minutes: 0};
+  const now = new Date();
+  function defaultAnchor(){
+    if (st.anchor === "start"){ const m = Math.ceil((now.getHours() * 60 + now.getMinutes()) / 5) * 5; st.day = m >= 1440 ? 1 : 0; st.minutes = m % 1440; }
+    else {
+      st.minutes = prefs.dinnerMin ?? 20 * 60;
+      for (st.day = 0; st.day < 5; st.day++){ const p = buildPlan(t, {...v, ...vals}, st); if (p.start >= now) break; }
+      if (st.day > 4) st.day = 4;
+    }
+  }
+  defaultAnchor();
+  const off = new Set(["fridge"]);
+  const dayOpts = [0,1,2,3,4].map(i => { const d = new Date(); d.setDate(d.getDate() + i); return [String(i), i === 0 ? "Oggi" : i === 1 ? "Domani" : d.toLocaleDateString("it-IT", {weekday:"short", day:"numeric"})]; });
+  const pm = postMax(v), F = Math.min(v.fridge, v.hours - 1);
+  const inner = '<div class="summary"><b>'+esc(T.label)+'</b><span>Lievitazione '+v.hours+' h'+(F ? ", di cui "+F+" in frigo" : ", tutta fuori dal frigo")+'</span></div>' +
+    '<div class="field"><span class="flabel">Parti da</span><div class="seg" data-rk="anchor" role="radiogroup" aria-label="Parti da">' +
+      [["start","Inizio impasto"],["dinner",DINNER(t)]].map(o => '<button type="button" role="radio" data-v="'+o[0]+'" aria-checked="'+(st.anchor===o[0])+'">'+o[1]+"</button>").join("") + "</div></div>" +
+    '<div class="field"><span class="flabel">Giorno</span><div class="seg days" data-rk="day" role="radiogroup" aria-label="Giorno">' +
+      dayOpts.map(o => '<button type="button" role="radio" data-v="'+o[0]+'" aria-checked="'+(String(st.day)===o[0])+'">'+esc(o[1])+"</button>").join("") + "</div></div>" +
+    slHtml("minutes", st.anchor === "start" ? "Ora dell'impasto" : DINNER(t), st.minutes, 0, 1435, 5, hm(st.minutes), "") +
+    '<section class="group"><h3>Pieghe di rinforzo</h3>' +
+      slHtml("folds", "Numero di pieghe", vals.folds, 0, 5, 1, String(vals.folds)) +
+      slHtml("foldGap", "Ogni", vals.foldGap, 15, 120, 5, vals.foldGap + " min", "La prima dopo questo tempo dall'impasto, le altre a distanza uguale.") + "</section>" +
+    '<section class="group"><h3>Staglio e forno</h3>' +
+      slHtml("post", F ? "Fuori dal frigo prima di cena" : "Dallo staglio alla cena", vals.post, 0, pm, 0.5, fmtNum(vals.post, 1) + " h", F ? "Lo staglio è nel momento in cui togli l'impasto dal frigo." : "") +
+      slHtml("ovenLead", "Accendi il forno prima di cena", vals.ovenLead, 10, 90, 5, vals.ovenLead + " min") + "</section>" +
+    '<section class="group"><h3>Promemoria</h3><p class="hint" id="rm-warn"></p><div class="list" id="rm-list"></div></section>' +
+    '<div class="form-foot"><span class="hint" id="rm-count"></span><button type="button" class="btn primary" id="rm-go">Crea in Promemoria</button></div>' +
+    '<details class="how"><summary>Prima volta? Crea il comando rapido</summary><p>Serve una sola volta, su iPhone (e se vuoi anche sul Mac). L\'app passa al comando “'+SHORTCUT+'” l\'elenco dei promemoria e il comando li crea nell\'app Promemoria.</p><ol>' +
+      SETUP_STEPS.map(s => "<li>"+s+"</li>").join("") + '</ol><button type="button" class="btn small" id="rm-test">Invia un promemoria di prova</button>' +
+      '<p>Se iOS chiede il permesso di aprire Comandi o di aggiungere promemoria, scegli <b>Consenti sempre</b>. Dopo l\'invio torna qui con il tasto in alto a sinistra.</p></details>';
+  const s = openSheet("Promemoria", inner);
+  const $ = q => s.el.querySelector(q);
+  const all = {...vals, minutes: st.minutes};
+  let plan = null;
+  function draw(){
+    Object.assign(vals, {folds:all.folds, foldGap:all.foldGap, post:all.post, ovenLead:all.ovenLead}); st.minutes = all.minutes;
+    plan = buildPlan(t, {...v, ...vals}, st);
+    const mh = $('.sl[data-k="minutes"] .hint');
+    mh.textContent = st.anchor === "start" ? DINNER(t) + " " + fmtDayHM(plan.dinner) : "Impasto " + fmtDayHM(plan.start) + (plan.start < new Date() ? " · è già passato!" : "");
+    $("#rm-warn").textContent = plan.warn;
+    const nowT = Date.now();
+    $("#rm-list").innerHTML = plan.items.map(it => {
+      const past = it.at.getTime() <= nowT + 30000, on = !past && !off.has(it.k);
+      return '<button type="button" class="card rm" data-rm="'+it.k+'" aria-pressed="'+on+'"'+(past ? " disabled" : "")+'><span class="rm-check" aria-hidden="true">'+(on ? "✓" : "")+'</span><span class="t"><span class="name">'+esc(it.title)+'</span><span class="sub">'+(past ? "già passato · " : "")+esc(fmtDayHM(it.at))+"</span></span></button>";
+    }).join("");
+    const n = plan.items.filter(it => it.at.getTime() > nowT + 30000 && !off.has(it.k)).length;
+    $("#rm-count").textContent = n === 1 ? "1 promemoria" : n + " promemoria";
+    $("#rm-go").disabled = !n;
+  }
+  wireSliders(s.el, all, (k, x) => k === "minutes" ? hm(x) : k === "foldGap" || k === "ovenLead" ? x + " min" : k === "post" ? fmtNum(x, 1) + " h" : String(x), draw);
+  s.el.addEventListener("click", e => {
+    const b = e.target.closest(".seg[data-rk] [data-v]");
+    if (b){
+      const k = b.closest(".seg").dataset.rk;
+      if (k === "anchor"){
+        if (st.anchor === b.dataset.v) return;
+        st.anchor = b.dataset.v; prefs.anchor = st.anchor; saveRemPrefs(prefs);
+        defaultAnchor(); all.minutes = st.minutes;
+        const r = $("#f-minutes"); r.value = st.minutes; $('.sl[data-k="minutes"] output').textContent = hm(st.minutes);
+        $('label[for="f-minutes"]').textContent = st.anchor === "start" ? "Ora dell'impasto" : DINNER(t);
+        s.el.querySelectorAll('.seg[data-rk="day"] [data-v]').forEach(x => x.setAttribute("aria-checked", String(x.dataset.v === String(st.day))));
+      } else st.day = Number(b.dataset.v);
+      b.closest(".seg").querySelectorAll("[data-v]").forEach(x => x.setAttribute("aria-checked", String(x === b)));
+      draw(); return;
+    }
+    const r = e.target.closest("[data-rm]");
+    if (r && !r.disabled){ const k = r.dataset.rm; off.has(k) ? off.delete(k) : off.add(k); draw(); }
+  });
+  $("#rm-test").addEventListener("click", () => openShortcut(["1|Prova del Diario pizza"]));
+  $("#rm-go").addEventListener("click", () => {
+    const nowT = Date.now();
+    const lines = plan.items.filter(it => it.at.getTime() > nowT + 30000 && !off.has(it.k)).map(it => Math.max(1, Math.round((it.at.getTime() - nowT) / 60000)) + "|" + it.title.replace(/[|\n]/g, " "));
+    if (!lines.length) return;
+    // ricorda le scelte per questo tipo di impasto (entrano anche in "Usa come predefiniti")
+    Object.assign(v, vals); touched[t] = true; saveLocal();
+    if (st.anchor === "dinner"){ prefs.dinnerMin = st.minutes; saveRemPrefs(prefs); }
+    openShortcut(lines);
+    setTimeout(() => s.close(), 400);
+  });
+  draw();
+}
+
 /* ================= vista gusti ================= */
 function allTags(){
   const used = new Set(); S.toppings.forEach(x => (x.tags || []).forEach(t => used.add(t)));
@@ -1086,7 +1242,8 @@ app.addEventListener("click", async e => {
   if (el.dataset.tyf){ S.typeFilter = S.typeFilter === el.dataset.tyf ? null : el.dataset.tyf; render(); return; }
   if (el.dataset.dtype){ S.defType = el.dataset.dtype; render(); return; }
   const act = el.dataset.act, t = calcType;
-  if (act === "save-bake"){
+  if (act === "reminders") remindersSheet();
+  else if (act === "save-bake"){
     const v = getCalc(t), r = compute(t, v);
     bakeForm(null, {type:t, params:{...v}, results:roundResults(r)});
   } else if (act === "reset"){

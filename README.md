@@ -30,6 +30,28 @@ Apri l'indirizzo GitHub Pages in Safari → Condividi → Aggiungi alla schermat
 
 Il calcolatore funziona anche senza accesso. Registro, gusti e predefiniti chiedono email e password, le stesse del Diario caffè.
 
+## Promemoria (app Promemoria di Apple)
+
+Dal calcolatore, "Promemoria" calcola gli orari di pieghe di rinforzo, staglio (quando togli l'impasto dal frigo) e accensione del forno,
+partendo dall'ora dell'impasto o dall'ora di cena. "Crea in Promemoria" li passa al comando rapido **Promemoria pizza**,
+che li crea nella lista **Pizza** dell'app Promemoria con l'avviso all'ora giusta.
+
+Il testo passato al comando ha una riga per promemoria: `minuti da adesso|titolo`.
+
+Il comando va creato una volta nell'app Comandi:
+
+1. In Promemoria crea la lista **Pizza**.
+2. In Comandi tocca **+** e chiama il comando **Promemoria pizza**.
+3. **Dividi testo**: testo = Input comando rapido, separatore = Nuove righe.
+4. **Ripeti con ognuno** sul Testo diviso. Tutto quel che segue va dentro il ciclo.
+5. **Dividi testo**: testo = Elemento ripetuto, separatore personalizzato `|`.
+6. **Ottieni elemento dall'elenco**: Primo elemento del Testo diviso del passo 5 → **Imposta variabile** `Minuti`.
+7. **Ottieni elemento dall'elenco**: Ultimo elemento dello stesso Testo diviso → **Imposta variabile** `Titolo`.
+8. **Regola data**: aggiungi `Minuti` minuti a Data attuale.
+9. **Aggiungi nuovo promemoria**: testo `Titolo`, lista Pizza, avviso alla data = Data regolata.
+
+Le stesse istruzioni sono nell'app, con un pulsante per inviare un promemoria di prova.
+
 ## Backup
 
 Dalla pagina Predefiniti: "Esporta backup" crea un file con predefiniti, impasti, gusti e foto (salvalo su iCloud Drive);
