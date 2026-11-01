@@ -508,14 +508,14 @@ function hintFor(t, k, v, r){
     case "load": return "≈ " + fmtG(r.piece) + " per teglia · 0,5 sottile, 0,7 alta";
     case "length": case "width": return "";
     case "diam": return "";
-    case "hydro": return T.hydroTip;
-    case "salt": return "≈ " + fmtNum(v.salt * v.hydro / 1000, 1) + "% sulla farina";
+    case "hydro": return "";
+    case "salt": return "";
     case "fat": return v.fat ? "≈ " + fmtNum(v.fat * v.hydro / 1000, 1) + "% sulla farina" : "Nessun grasso nell'impasto";
     case "pdr":
       if (r.maxPdr < 0.5) return "Con questi parametri non c'è spazio per la pasta di riporto.";
       return "Massimo " + fmtNum(r.maxPdr, 1) + "%: oltre servirebbe meno di zero lievito di birra." + (v.pdr ? " Ora: " + fmtG(r.pdr) + "." : "");
-    case "hours": return "W della farina consigliato ≈ " + r.W;
-    case "fridge": return v.fridge ? "In frigo le ore valgono circa 1/10: equivale a " + fmtNum(r.effHours, 1) + " h a temperatura ambiente." : "Tutta la lievitazione a temperatura ambiente.";
+    case "hours": return "";
+    case "fridge": return "";
     case "temp": return v.comp ? "Con la compensazione il calcolo usa " + fmtNum(r.calcTemp, 1) + " °C." : "";
     default: return "";
   }
@@ -645,18 +645,8 @@ function resultsHtml(t, v, r){
   html += '<div class="yeast"><div class="ytop"><span class="rl">'+yeastName(v)+'</span><span class="yk" role="radiogroup" aria-label="Tipo di lievito">' +
     BASE.yeast.options.map(o => '<button type="button" role="radio" data-yk="'+o[0]+'" aria-checked="'+((v.yeast || "fresco") === o[0])+'">'+o[1]+"</button>").join("") +
     '</span></div><span class="rv">'+yHtml(yg)+"</span></div></div>";
-  const meta = [];
-  if (t === "teglia") meta.push("Impasto <b class=\"num\">"+fmtG(r.piece)+"</b> per teglia" + (v.count > 1 ? " · totale <b class=\"num\">"+fmtG(r.total)+"</b>" : ""));
-  else meta.push("Impasto totale <b class=\"num\">"+fmtG(r.total)+"</b> · "+v.count+" "+T.piece[v.count === 1 ? 0 : 1]+" da "+fmtNum(v.weight)+" g");
-  if (r.yeast > 0) meta.push(yeastName(v) + ": " + fmtNum(yg / r.flour * 100, 3) + "% sulla farina" + (isDry(v) ? " (calcolato come 1/3 del fresco)" : ""));
-  else if (r.pdr > 0) meta.push("La pasta di riporto basta da sola: niente lievito di birra.");
-  meta.push("W della farina consigliato ≈ <b class=\"num\">"+r.W+"</b>");
   const end = new Date(Date.now() + v.hours * 3600e3);
-  meta.push("Impastando adesso, pronto verso le <b>"+end.toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"})+"</b> di "+end.toLocaleDateString("it-IT",{weekday:"long", day:"numeric", month:"short"}));
-  html += '<div class="res-meta">' + meta.map(m => "<span>"+m+"</span>").join("") + "</div>";
-  if (yg > 0 && yg < 1 && r.water > yg * 100){
-    html += '<p class="tip">Quantità difficile da pesare? Sciogli 1 g di lievito '+(isDry(v) ? "secco" : "fresco")+' in 100 g d\'acqua e versane <b class="num">'+fmtNum(yg * 100, 0)+' g</b> nell\'impasto, al posto di altrettanta acqua.</p>';
-  }
+  html += '<div class="res-meta"><span>Impastando adesso, pronto verso le <b>'+end.toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"})+"</b> di "+end.toLocaleDateString("it-IT",{weekday:"long", day:"numeric", month:"short"})+"</span></div>";
   return html;
 }
 function miniHtml(t, r, v){
@@ -908,7 +898,7 @@ function bakeForm(b, seed){
     '<div class="field"><label for="bk-at">Data dell\'impasto</label><input type="datetime-local" id="bk-at" value="'+localDT(new Date(d.at))+'"></div>' +
     photoBlock("bk-photo", d.photo, "Aggiungi una foto della pizza") +
     '<section class="group"><h3>Farina</h3>' + chipPickHtml("bk-flour", flours, flourSt.sel, "Nome di una nuova farina…") +
-      slHtml("flourW", "Forza della farina (W)", vals.flourW, 0, 450, 10, vals.flourW ? "W " + vals.flourW : "n.d.", "Consigliato per queste ore: W ≈ " + (r.W || "")) + "</section>" +
+      slHtml("flourW", "Forza della farina (W)", vals.flourW, 0, 450, 10, vals.flourW ? "W " + vals.flourW : "n.d.") + "</section>" +
     '<section class="group"><h3>Cottura</h3>' + segHtml("oven", "Forno", OVENS, vals.oven) +
       slHtml("ovenTemp", "Temperatura del forno", vals.ovenTemp, 150, 500, 10, vals.ovenTemp + " °C") +
       slHtml("bakeTime", "Tempo di cottura", vals.bakeTime, 15, 3600, 15, durFmt(vals.bakeTime)) + "</section>" +
