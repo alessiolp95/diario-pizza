@@ -316,12 +316,12 @@ const TYPES = {
     defaults:{count:4, weight:180, hydro:60, salt:50, fat:50, pdr:0, pdrType:2, hours:24, fridge:0, temp:20, comp:false},
     oven:{temp:330, time:240}},
   teglia: {label:"Pizza in teglia", tab:"Teglia", sub:"In teglia o alla pala: l'impasto si calcola dalla superficie.",
-    fields:["count","shape","length","width","diam","load","hydro","salt","fat","pdr","pdrType","hours","fridge","temp","comp"],
+    fields:["count","shape","length","width","diam","load","hydro","salt","fat","pdr","pdrType","hours","fridge","temp"],
     labels:{count:"Numero di teglie", fat:"Olio per litro d'acqua"},
     ranges:{count:[1,6,1]},
     hydroTip:"Di solito 75–85%.",
     piece:["teglia","teglie"], fatName:"Olio",
-    defaults:{count:1, shape:"rett", length:40, width:30, diam:30, load:0.6, hydro:80, salt:50, fat:35, pdr:0, pdrType:2, hours:24, fridge:0, temp:20, comp:true},
+    defaults:{count:1, shape:"rett", length:40, width:30, diam:30, load:0.6, hydro:80, salt:50, fat:35, pdr:0, pdrType:2, hours:24, fridge:0, temp:20, comp:false},
     oven:{temp:250, time:900}},
   pane: {label:"Pane", tab:"Pane", sub:"Pagnotte e filoni, anche con lievito madre come pasta di riporto.",
     fields:["count","weight","hydro","salt","fat","pdr","pdrType","hours","fridge","temp"],
@@ -381,7 +381,7 @@ function compute(t, v){
   const total = totalDough(t, v);
   const H = v.hydro, l = v.salt, d = v.fat, i = v.hours;
   const s = Math.max(0, Math.min(v.fridge, i - 1));
-  const n = v.temp * (1 - 0.25 * (v.comp ? 1 : 0));            // temperatura usata nel calcolo
+  const n = v.temp;   // la vecchia "compensazione teglia" (75% della temperatura) non si usa più: la teglia ha la correzione del lievito
   const g = ({1:1/300, 2:0.005, 3:0.01})[v.pdrType] ?? 0.005;   // g di lievito equivalenti per g di pasta di riporto
   const c = i - 0.9 * s;                                        // ore equivalenti a temperatura ambiente
   const adj = (v.yeastAdj ?? YEAST_ADJ[t] ?? 100) / 100;              // correzione personale del lievito
@@ -522,7 +522,7 @@ function hintFor(t, k, v, r){
     case "hours": return "";
     case "fridge": return "";
     case "yeastAdj": return v.yeastAdj === 100 ? "Lievito come da formula originale." : "Il lievito calcolato dalla formula viene moltiplicato per " + fmtNum(v.yeastAdj / 100, 2) + ".";
-    case "temp": return v.comp ? "Con la compensazione il calcolo usa " + fmtNum(r.calcTemp, 1) + " °C." : "";
+    case "temp": return "";
     default: return "";
   }
 }
@@ -678,7 +678,7 @@ function renderCalc(){
     '<div class="prefill" id="prefill">'+prefillHtml(t)+"</div>" +
     '<div id="panel" class="group"></div>' +
     '<div class="actions"><button class="btn primary" data-act="save-bake">Salva nel registro</button><button class="btn" data-act="reminders">Promemoria</button><button class="btn" data-act="as-default">Usa come predefiniti</button><button class="btn" data-act="reset">Ripristina predefiniti</button></div>' +
-    '<details class="how"><summary>Come funziona il calcolo</summary><p>Le formule sono quelle del Calcolapizza 2.1 della Confraternita della Pizza: il lievito dipende da idratazione, sale, grassi, temperatura e ore (in frigo valgono circa un decimo). La pasta di riporto sostituisce parte del lievito: stanca vale 1/300 del suo peso, normale 1/200, vivace 1/100. La compensazione teglia usa il 75% della temperatura. Il lievito secco è calcolato come un terzo del fresco (vale per il secco attivo e per l\'istantaneo).</p></details>';
+    '<details class="how"><summary>Come funziona il calcolo</summary><p>Le formule sono quelle del Calcolapizza 2.1 della Confraternita della Pizza: il lievito dipende da idratazione, sale, grassi, temperatura e ore (in frigo valgono circa un decimo). La pasta di riporto sostituisce parte del lievito: stanca vale 1/300 del suo peso, normale 1/200, vivace 1/100. Per la tonda il lievito è aumentato del 12% e per la teglia è 3 volte quello della formula (valori modificabili nei Predefiniti). Il lievito secco è calcolato come un terzo del fresco (vale per il secco attivo e per l\'istantaneo).</p></details>';
   const resEl = document.getElementById("res"), miniIn = document.getElementById("mini-in");
   const panel = mountPanel(document.getElementById("panel"), "c", t, v, r => {
     resEl.innerHTML = resultsHtml(t, v, r);
