@@ -290,12 +290,13 @@ const BASE = {
   fridge: {label:"…di cui in frigorifero", min:0, max:95, step:1, unit:"h"},
   temp:   {label:"Temperatura ambiente", min:15, max:35, step:0.5, unit:"°C", dec:1},
   comp:   {label:"Compensazione teglia", type:"bool"},
+  yeastAdj:{label:"Correzione del lievito", min:50, max:400, step:1, unit:"%"},
   yeast:  {label:"Lievito di birra", type:"seg", options:[["fresco","Fresco"],["secco","Secco"]]},
 };
 const GROUPS = [
   ["Quantità", ["count","weight","shape","length","width","diam","load"]],
   ["Impasto", ["hydro","salt","fat","pdr","pdrType"]],
-  ["Lievitazione", ["yeast","hours","fridge","temp","comp"]],
+  ["Lievitazione", ["yeast","yeastAdj","hours","fridge","temp","comp"]],
 ];
 const TYPES = {
   tonda: {label:"Pizza tonda", tab:"Tonda", sub:"Napoletana o contemporanea, a panielli.",
@@ -335,6 +336,9 @@ const TYPE_KEYS = Object.keys(TYPES);
 const ADVANCED = ["fat","pdr","pdrType"];
 for (const k of Object.keys(TYPES)) Object.assign(TYPES[k].defaults, {folds:3, foldGap:60, post:null, ovenLead:30});
 for (const k of TYPE_KEYS){ TYPES[k].fields.push("yeast"); TYPES[k].defaults.yeast = "fresco"; }
+// correzione personale del lievito rispetto alla formula originale (100% = Calcolapizza)
+const YEAST_ADJ = {tonda:112, romana:100, teglia:300, pane:100};
+for (const k of TYPE_KEYS){ TYPES[k].fields.push("yeastAdj"); TYPES[k].defaults.yeastAdj = YEAST_ADJ[k]; }
 let advOpen = false;
 const isDry = v => v && v.yeast === "secco";
 const yeastOf = (v, freshG) => isDry(v) ? freshG / 3 : freshG;          // lievito secco ≈ 1/3 del fresco
@@ -380,7 +384,8 @@ function compute(t, v){
   const n = v.temp * (1 - 0.25 * (v.comp ? 1 : 0));            // temperatura usata nel calcolo
   const g = ({1:1/300, 2:0.005, 3:0.01})[v.pdrType] ?? 0.005;   // g di lievito equivalenti per g di pasta di riporto
   const c = i - 0.9 * s;                                        // ore equivalenti a temperatura ambiente
-  const h = 2250 * (1 + l/200) * (1 + d/300) / ((4.2*H - 80 - 0.0305*H*H) * Math.pow(n, 2.5) * Math.pow(c, 1.2));
+  const adj = (v.yeastAdj ?? YEAST_ADJ[t] ?? 100) / 100;              // correzione personale del lievito
+  const h = adj * 2250 * (1 + l/200) * (1 + d/300) / ((4.2*H - 80 - 0.0305*H*H) * Math.pow(n, 2.5) * Math.pow(c, 1.2));
   const C = H * (l + d) + 1000 * (H + 100);
   const maxPdr = 1e5 * h * 100 / (1e5 * h + C * g);
   const pdrPct = Math.min(v.pdr || 0, maxPdr);
@@ -516,6 +521,7 @@ function hintFor(t, k, v, r){
       return "Massimo " + fmtNum(r.maxPdr, 1) + "%: oltre servirebbe meno di zero lievito di birra." + (v.pdr ? " Ora: " + fmtG(r.pdr) + "." : "");
     case "hours": return "";
     case "fridge": return "";
+    case "yeastAdj": return v.yeastAdj === 100 ? "Lievito come da formula originale." : "Il lievito calcolato dalla formula viene moltiplicato per " + fmtNum(v.yeastAdj / 100, 2) + ".";
     case "temp": return v.comp ? "Con la compensazione il calcolo usa " + fmtNum(r.calcTemp, 1) + " °C." : "";
     default: return "";
   }
@@ -677,7 +683,7 @@ function renderCalc(){
   const panel = mountPanel(document.getElementById("panel"), "c", t, v, r => {
     resEl.innerHTML = resultsHtml(t, v, r);
     miniIn.innerHTML = miniHtml(t, r, v);
-  }, ["yeast"]);
+  }, ["yeast","yeastAdj"]);
   resEl.addEventListener("click", e => {
     const b = e.target.closest("[data-yk]"); if (!b || v.yeast === b.dataset.yk) return;
     v.yeast = b.dataset.yk; touched[t] = true; saveLocal(); panel.refresh();
